@@ -1,0 +1,34 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+[Bb]in/
+[Oo]bj/
+
+# Azure Functions
+local.settings.json
+
+# ASP.NET
+appsettings.Development.json
+
+# Node modules
+node_modules/
+
+# Teams App Package
+*.zip
+TeamsAppManifest/*.zip
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
