@@ -135,6 +135,15 @@ az storage account create \
   --sku Standard_LRS
 ```
 
+### Enable Shared Key Access
+
+```bash
+az storage account update \
+    --name stcourtlistenerdemo \
+    --resource-group rg-courtlistener-demo \
+    --set allowSharedKeyAccess=true
+```
+
 ### Create Function App
 
 ```bash
@@ -154,7 +163,7 @@ az functionapp create \
 az functionapp show \
   --name func-courtlistener-mcp \
   --resource-group rg-courtlistener-demo \
-  --query "defaultHostName" \
+  --query "properties.defaultHostName" \
   --output tsv
 ```
 
