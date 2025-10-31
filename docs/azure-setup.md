@@ -38,16 +38,22 @@ az cognitiveservices account create \
 
 ### Deploy a model
 
+> NOTE: Models are changing quickly. The below code uses a model that was available _when this document was written_. However, if you receive an error running the below command or you'd like to use an updated model, run the following command to view which models are currently available:
+> ```
+> az cognitiveservices model list --location eastus2 | \
+> jq '.[] | select(.model.name | contains("gpt-4")) | select(.model.lifecycleStatus == "GenerallyAvailable" or .model.lifecycleStatus == "Preview") | {name: .model.name, version: .model.version, format: .model.format, lifecycleStatus: .model.lifecycleStatus}'
+> ```
+
 ```bash
 az cognitiveservices account deployment create \
   --name openai-courtlistener-demo \
   --resource-group rg-courtlistener-demo \
-  --deployment-name gpt-4 \
-  --model-name gpt-4 \
-  --model-version "0613" \
+  --deployment-name "gpt-4.1" \
+  --model-name "gpt-4.1" \
+  --model-version "2025-04-14" \
   --model-format OpenAI \
   --sku-capacity 10 \
-  --sku-name "Standard"
+  --sku-name "GlobalStandard"
 ```
 
 ### Get the endpoint and key
@@ -71,7 +77,7 @@ az cognitiveservices account keys list \
 **Save these values:**
 - Endpoint: `https://openai-courtlistener-demo.openai.azure.com/`
 - API Key: `<your-key>`
-- Deployment Name: `gpt-4`
+- Deployment Name: `gpt-4.1`
 
 ## 4. Create Azure Bot Service
 
@@ -81,7 +87,7 @@ az cognitiveservices account keys list \
 # Create app registration and get App ID
 az ad app create \
   --display-name "CourtListenerBot" \
-  --sign-in-audience AzureADMultiTenant
+  --sign-in-audience AzureADMultipleOrgs
 
 # Get the App ID (save this)
 APP_ID=$(az ad app list --display-name "CourtListenerBot" --query "[0].appId" -o tsv)
@@ -91,7 +97,7 @@ echo "App ID: $APP_ID"
 az ad app credential reset \
   --id $APP_ID \
   --append \
-  --credential-description "BotSecret"
+  --display-name "BotSecret"
 ```
 
 **Save the output:**
@@ -101,13 +107,18 @@ az ad app credential reset \
 ### Create Azure Bot Resource
 
 ```bash
+# Get your Tenant ID
+TENANT_ID=$(az account show --query tenantId -o tsv)
+
+# Create bot resource
 az bot create \
+  --app-type SingleTenant \
   --name bot-courtlistener-demo \
   --resource-group rg-courtlistener-demo \
-  --kind webapp \
   --sku F0 \
   --appid $APP_ID \
-  --endpoint "https://YOUR_BOT_ENDPOINT/api/messages"
+  --endpoint "https://YOUR_BOT_ENDPOINT/api/messages" \
+  --tenant-id $TENANT_ID
 ```
 
 > **Note:** You'll update the endpoint later after deploying the Teams bot application.
