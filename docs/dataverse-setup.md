@@ -75,6 +75,9 @@ echo "Tenant ID: $TENANT_ID"
 # Create client secret
 DATAVERSE_SECRET=$(az ad app credential reset --id $DATAVERSE_APP_ID --append --query "password" -o tsv)
 echo "Dataverse Secret: $DATAVERSE_SECRET"
+
+# Ensure Service Principal is created
+az ad sp create --id $DATAVERSE_APP_ID
 ```
 
 **Save these values:**
