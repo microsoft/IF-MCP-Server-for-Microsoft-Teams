@@ -261,8 +261,19 @@ IDENTITY=$(az functionapp identity show \
   --query principalId \
   --output tsv)
 
-# Grant access to Key Vault
+# Get subscription Id
 SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+
+# Get your user Id
+USER_ID=$(az ad signed-in-user show --query id -o tsv)
+
+# Add yourself as a writer
+az role assignment create \
+    --role "Key Vault Secrets Officer" \
+    --assignee $USER_ID \
+    --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.KeyVault/vaults/kv-courtlistener"
+
+# The function app as a secrets reader
 az role assignment create \
     --role "Key Vault Secrets User" \
     --assignee $IDENTITY \
