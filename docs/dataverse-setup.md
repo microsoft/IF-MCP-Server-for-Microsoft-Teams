@@ -62,7 +62,7 @@ This allows the MCP server to authenticate to Dataverse without user credentials
 # Create app registration
 az ad app create \
   --display-name "CourtListenerMcpServerDataverse" \
-  --sign-in-audience AzureADMultiTenant
+  --sign-in-audience AzureADMultipleOrgs
 
 # Get the App ID
 DATAVERSE_APP_ID=$(az ad app list --display-name "CourtListenerMcpServerDataverse" --query "[0].appId" -o tsv)
