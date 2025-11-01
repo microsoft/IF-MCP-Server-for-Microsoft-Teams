@@ -262,10 +262,11 @@ IDENTITY=$(az functionapp identity show \
   --output tsv)
 
 # Grant access to Key Vault
-az keyvault set-policy \
-  --name kv-courtlistener \
-  --object-id $IDENTITY \
-  --secret-permissions get list
+SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+az role assignment create \
+    --role "Key Vault Secrets User" \
+    --assignee $IDENTITY \
+    --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.KeyVault/vaults/kv-courtlistener"
 
 # Store secrets
 az keyvault secret set --vault-name kv-courtlistener --name "DataverseClientSecret" --value "<YOUR_SECRET>"
