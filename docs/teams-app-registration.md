@@ -68,7 +68,7 @@ Example:
 
 ## 2. Create App Icons
 
-Teams requires two icon files in the `TeamsAppManifest` folder:
+Teams requires two icon files in the `TeamsAppManifest` folder. Two sample images have been provided, but if you'd like to create your own, here are the requirements:
 
 ### color.png (192x192 pixels)
 - Full-color icon
