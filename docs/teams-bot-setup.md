@@ -32,7 +32,7 @@ Update `appsettings.json` with your values:
   "AzureOpenAI": {
     "Endpoint": "https://openai-courtlistener-demo.openai.azure.com/",
     "ApiKey": "<YOUR_AZURE_OPENAI_KEY>",
-    "DeploymentName": "gpt-4"
+    "DeploymentName": "gpt-4.1"
   },
   "McpServer": {
     "BaseUrl": "https://func-courtlistener-mcp.azurewebsites.net",
