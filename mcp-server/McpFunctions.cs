@@ -40,7 +40,6 @@ public class McpFunctions
             var mcpResponse = await _mcpServer.HandleRequestAsync(mcpRequest);
 
             var response = req.CreateResponse(HttpStatusCode.OK);
-            response.Headers.Add("Content-Type", "application/json");
             await response.WriteAsJsonAsync(mcpResponse);
 
             return response;
@@ -64,19 +63,18 @@ public class McpFunctions
     }
 
     [Function("health")]
-    public HttpResponseData HealthCheck(
+    public async Task<HttpResponseData> HealthCheck(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "health")] HttpRequestData req)
     {
         _logger.LogInformation("Health check requested");
 
         var response = req.CreateResponse(HttpStatusCode.OK);
-        response.Headers.Add("Content-Type", "application/json");
-        response.WriteString(JsonSerializer.Serialize(new
+        await response.WriteAsJsonAsync(new
         {
             status = "healthy",
             timestamp = DateTime.UtcNow,
             service = "court-listener-mcp-server"
-        }));
+        });
 
         return response;
     }

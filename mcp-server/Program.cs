@@ -3,7 +3,7 @@ using Microsoft.Extensions.Hosting;
 using CourtListenerMcpServer.Services;
 
 var host = new HostBuilder()
-    .ConfigureFunctionsWorkerDefaults()
+    .ConfigureFunctionsWebApplication()
     .ConfigureServices(services =>
     {
         services.AddHttpClient<ICourtListenerClient, CourtListenerClient>();
