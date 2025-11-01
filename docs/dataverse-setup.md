@@ -102,8 +102,8 @@ az ad sp create --id $DATAVERSE_APP_ID
 ### Using Power Apps Portal
 
 1. Go to [Power Apps](https://make.powerapps.com/)
-2. Select your environment from the top-right dropdown
-3. Navigate to **Tables** > **+ New table** > **Set advanced properties**
+2. Select your environment ("**Court Listener Demo**") from the top-right dropdown
+3. Navigate to **Tables** > **+ New table** > **Table (advanced properties)**
 4. Configure the table:
    - **Display name:** `Court Listener Cache`
    - **Plural name:** `Court Listener Caches`
