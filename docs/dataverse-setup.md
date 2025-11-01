@@ -22,8 +22,12 @@ This guide walks you through setting up Microsoft Dataverse for caching Court Li
    - **Create a database:** `Yes`
    - **Currency:** USD
    - **Language:** English
-4. Click **Next** and then **Save**
-5. Wait for the environment to be created (may take a few minutes)
+   - **Add a Dataverse data store?** Enable
+   - Choose Billing
+4. Click **Next**
+5. **Security Group**: Open access - None (or choose a specific user)
+6. Click **Save**
+7. Wait for the environment to be created (may take a few minutes)
 
 ### Option B: Using PowerShell
 
