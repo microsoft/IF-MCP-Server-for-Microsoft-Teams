@@ -163,7 +163,7 @@ az functionapp create \
 az functionapp show \
   --name func-courtlistener-mcp \
   --resource-group rg-courtlistener-demo \
-  --query "properties.defaultHostName" \
+  --query "defaultHostName" \
   --output tsv
 ```
 
