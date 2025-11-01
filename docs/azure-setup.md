@@ -227,7 +227,7 @@ At this point, you should have:
    - Name: `openai-courtlistener-demo`
    - Endpoint: `https://openai-courtlistener-demo.openai.azure.com/`
    - API Key: `<saved>`
-   - Deployment: `gpt-4`
+   - Deployment: `gpt-4.1`
 
 3. **Bot Registration:**
    - Bot Name: `bot-courtlistener-demo`
