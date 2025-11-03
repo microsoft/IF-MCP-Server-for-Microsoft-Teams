@@ -87,7 +87,7 @@ az cognitiveservices account keys list \
 # Create app registration and get App ID
 az ad app create \
   --display-name "CourtListenerBot" \
-  --sign-in-audience AzureADMyOrg
+  --sign-in-audience AzureADMultipleOrgs
 
 # Get the App ID (save this)
 APP_ID=$(az ad app list --display-name "CourtListenerBot" --query "[0].appId" -o tsv)
