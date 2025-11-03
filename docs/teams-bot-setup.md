@@ -104,7 +104,7 @@ az webapp config appsettings set \
     "MicrosoftAppPassword=<YOUR_BOT_APP_SECRET>" \
     "AzureOpenAI__Endpoint=https://openai-courtlistener-demo.openai.azure.com/" \
     "AzureOpenAI__ApiKey=<YOUR_AZURE_OPENAI_KEY>" \
-    "AzureOpenAI__DeploymentName=gpt-4" \
+    "AzureOpenAI__DeploymentName=gpt-4.1" \
     "McpServer__BaseUrl=https://func-courtlistener-mcp.azurewebsites.net" \
     "McpServer__FunctionKey=<YOUR_MCP_FUNCTION_KEY>"
 ```
@@ -152,7 +152,7 @@ echo "Bot URL: https://$APP_URL/api/messages"
 curl https://$APP_URL/api/messages
 ```
 
-### Test with Bot Framework Emulator
+### Test with Bot Framework Emulator (Must have ngrok configured)
 
 1. Open Bot Framework Emulator
 2. Click **Open Bot**
@@ -236,6 +236,8 @@ az webapp log config \
 
 ### Use Azure Key Vault (Recommended for Production)
 
+> **NOTE:** The instructions below mimic the instructions for the Key Vault you setup previously. You can use the same Key Vault (recommended), if desired. To do so, simply ignore the first command.
+
 ```bash
 # Create Key Vault (if not already created)
 az keyvault create \
@@ -255,11 +257,11 @@ IDENTITY=$(az webapp identity show \
   --query principalId \
   --output tsv)
 
-# Grant access to Key Vault
-az keyvault set-policy \
-  --name kv-courtlistener \
-  --object-id $IDENTITY \
-  --secret-permissions get list
+# The web app as a secrets reader
+az role assignment create \
+    --role "Key Vault Secrets User" \
+    --assignee $IDENTITY \
+    --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.KeyVault/vaults/kv-courtlistener"
 
 # Store secrets
 az keyvault secret set --vault-name kv-courtlistener --name "BotAppPassword" --value "<YOUR_BOT_SECRET>"
