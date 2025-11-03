@@ -2,10 +2,17 @@
 
 Get up and running with the Court Listener MCP Teams Bot in 5 steps.
 
-## Step 1: Azure Resources (30 minutes)
+## Step 1: Resource Identification (10 minutes)
+
+Follow [docs/resource-identification.md](./docs/resource-identification.md) to:
+- Set all resource name variables
+- Verify name availability
+- Save variables for later use
+
+## Step 2: Azure Resources (30 minutes)
 
 Follow [docs/azure-setup.md](./docs/azure-setup.md) to create:
-- Azure OpenAI (GPT-4)
+- Azure OpenAI (GPT-4.1)
 - Bot Service registration
 - Function App (MCP server)
 - App Service (Teams bot)
@@ -14,7 +21,7 @@ Follow [docs/azure-setup.md](./docs/azure-setup.md) to create:
 - Azure subscription
 - Azure CLI installed
 
-## Step 2: Dataverse Setup (15 minutes)
+## Step 3: Dataverse Setup (15 minutes)
 
 Follow [docs/dataverse-setup.md](./docs/dataverse-setup.md) to:
 - Create Power Platform environment
@@ -25,7 +32,7 @@ Follow [docs/dataverse-setup.md](./docs/dataverse-setup.md) to:
 - Power Platform access
 - PowerShell or Power Platform Admin Center
 
-## Step 3: Deploy MCP Server (15 minutes)
+## Step 4: Deploy MCP Server (15 minutes)
 
 Follow [docs/mcp-server-setup.md](./docs/mcp-server-setup.md) to:
 - Configure local settings
@@ -41,7 +48,7 @@ func start  # Test locally
 func azure functionapp publish func-courtlistener-mcp  # Deploy
 ```
 
-## Step 4: Deploy Teams Bot (15 minutes)
+## Step 5: Deploy Teams Bot (15 minutes)
 
 Follow [docs/teams-bot-setup.md](./docs/teams-bot-setup.md) to:
 - Configure app settings
@@ -58,7 +65,7 @@ dotnet publish -c Release -o ./publish
 # Deploy to Azure
 ```
 
-## Step 5: Install in Teams (10 minutes)
+## Step 6: Install in Teams (10 minutes)
 
 Follow [docs/teams-app-registration.md](./docs/teams-app-registration.md) to:
 - Create Teams app package

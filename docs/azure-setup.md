@@ -4,34 +4,28 @@ This guide walks you through creating all necessary Azure resources for the Cour
 
 ## Prerequisites
 
-- Azure subscription with appropriate permissions
-- Azure CLI installed ([Install Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli))
+- Completed [Resource Identification](./resource-identification.md)
+- All variables from Resource Identification set in your terminal
+- Azure CLI installed and logged in
 - PowerShell or Bash terminal
 
-## 1. Login to Azure
-
-```bash
-az login
-az account set --subscription "YOUR_SUBSCRIPTION_ID"
-```
-
-## 2. Create Resource Group
+## 1. Create Resource Group
 
 ```bash
 az group create \
-  --name rg-courtlistener-demo \
-  --location eastus
+  --name $RESOURCE_GROUP \
+  --location $LOCATION
 ```
 
-## 3. Create Azure OpenAI Resource
+## 2. Create Azure OpenAI Resource
 
 ### Create the resource
 
 ```bash
 az cognitiveservices account create \
-  --name openai-courtlistener-demo \
-  --resource-group rg-courtlistener-demo \
-  --location eastus \
+  --name $OPENAI_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --location $LOCATION \
   --kind OpenAI \
   --sku S0
 ```
@@ -39,99 +33,90 @@ az cognitiveservices account create \
 ### Deploy a model
 
 > NOTE: Models are changing quickly. The below code uses a model that was available _when this document was written_. However, if you receive an error running the below command or you'd like to use an updated model, run the following command to view which models are currently available:
-> ```
+> ```bash
 > az cognitiveservices model list --location eastus2 | \
 > jq '.[] | select(.model.name | contains("gpt-4")) | select(.model.lifecycleStatus == "GenerallyAvailable" or .model.lifecycleStatus == "Preview") | {name: .model.name, version: .model.version, format: .model.format, lifecycleStatus: .model.lifecycleStatus}'
 > ```
 
 ```bash
-az cognitiveservices account deployment create \
-  --name openai-courtlistener-demo \
-  --resource-group rg-courtlistener-demo \
-  --deployment-name "gpt-4.1" \
-  --model-name "gpt-4.1" \
-  --model-version "2025-04-14" \
-  --model-format OpenAI \
-  --sku-capacity 10 \
-  --sku-name "GlobalStandard"
-```
-
-### Get the endpoint and key
-
-```bash
 # Get endpoint
-az cognitiveservices account show \
-  --name openai-courtlistener-demo \
-  --resource-group rg-courtlistener-demo \
+OPENAI_ENDPOINT=$(az cognitiveservices account show \
+  --name $OPENAI_NAME \
+  --resource-group $RESOURCE_GROUP \
   --query "properties.endpoint" \
-  --output tsv
+  --output tsv)
+
+echo "OpenAI Endpoint: $OPENAI_ENDPOINT"
 
 # Get API key
-az cognitiveservices account keys list \
-  --name openai-courtlistener-demo \
-  --resource-group rg-courtlistener-demo \
+OPENAI_API_KEY=$(az cognitiveservices account keys list \
+  --name $OPENAI_NAME \
+  --resource-group $RESOURCE_GROUP \
   --query "key1" \
-  --output tsv
+  --output tsv)
+
+echo "OpenAI API Key: $OPENAI_API_KEY"
 ```
 
-**Save these values:**
-- Endpoint: `https://openai-courtlistener-demo.openai.azure.com/`
-- API Key: `<your-key>`
-- Deployment Name: `gpt-4.1`
-
-## 4. Create Azure Bot Service
+## 3. Create Azure Bot Service
 
 ### Create App Registration
 
 ```bash
-# Create app registration and get App ID
+# Create app registration
 az ad app create \
-  --display-name "CourtListenerBot" \
-  --sign-in-audience AzureADMultipleOrgs
+  --display-name "$BOT_DISPLAY_NAME" \
+  --sign-in-audience AzureADMyOrg
 
-# Get the App ID (save this)
-APP_ID=$(az ad app list --display-name "CourtListenerBot" --query "[0].appId" -o tsv)
+# Get the App ID
+APP_ID=$(az ad app list --display-name "$BOT_DISPLAY_NAME" --query "[0].appId" -o tsv)
 echo "App ID: $APP_ID"
 
+# Add Microsoft Graph API permissions
+az ad app permission add \
+  --id $APP_ID \
+  --api 00000003-0000-0000-c000-000000000000 \
+  --api-permissions e1fe6dd8-ba31-4d61-89e7-88639da4683d=Scope
+
+# Grant admin consent
+az ad app permission admin-consent --id $APP_ID
+
 # Create client secret
-az ad app credential reset \
+APP_SECRET=$(az ad app credential reset \
   --id $APP_ID \
   --append \
-  --display-name "BotSecret"
-```
+  --display-name "BotSecret" \
+  --query "password" \
+  --output tsv)
 
-**Save the output:**
-- App ID: `<your-app-id>`
-- App Secret: `<your-secret>`
+echo "App Secret: $APP_SECRET"
+```
 
 ### Create Azure Bot Resource
 
 ```bash
-# Get your Tenant ID
-TENANT_ID=$(az account show --query tenantId -o tsv)
-
-# Create bot resource
+# Create bot resource (endpoint will be updated after deploying Teams bot)
 az bot create \
   --app-type SingleTenant \
-  --name bot-courtlistener-demo \
-  --resource-group rg-courtlistener-demo \
+  --name $BOT_NAME \
+  --resource-group $RESOURCE_GROUP \
   --sku F0 \
   --appid $APP_ID \
-  --endpoint "https://YOUR_BOT_ENDPOINT/api/messages" \
+  --endpoint "https://$APP_SERVICE_NAME.azurewebsites.net/api/messages" \
   --tenant-id $TENANT_ID
 ```
 
 > **Note:** You'll update the endpoint later after deploying the Teams bot application.
 
-## 5. Create Azure Function App for MCP Server
+## 4. Create Azure Function App for MCP Server
 
 ### Create Storage Account
 
 ```bash
 az storage account create \
-  --name stcourtlistenerdemo \
-  --resource-group rg-courtlistener-demo \
-  --location eastus \
+  --name $STORAGE_ACCOUNT_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --location $LOCATION \
   --sku Standard_LRS
 ```
 
@@ -139,8 +124,8 @@ az storage account create \
 
 ```bash
 az storage account update \
-    --name stcourtlistenerdemo \
-    --resource-group rg-courtlistener-demo \
+    --name $STORAGE_ACCOUNT_NAME \
+    --resource-group $RESOURCE_GROUP \
     --set allowSharedKeyAccess=true
 ```
 
@@ -148,10 +133,10 @@ az storage account update \
 
 ```bash
 az functionapp create \
-  --name func-courtlistener-mcp \
-  --resource-group rg-courtlistener-demo \
-  --storage-account stcourtlistenerdemo \
-  --consumption-plan-location eastus \
+  --name $FUNCTION_APP_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --storage-account $STORAGE_ACCOUNT_NAME \
+  --consumption-plan-location $LOCATION \
   --runtime dotnet-isolated \
   --runtime-version 8 \
   --functions-version 4
@@ -161,28 +146,28 @@ az functionapp create \
 
 ```bash
 az functionapp show \
-  --name func-courtlistener-mcp \
-  --resource-group rg-courtlistener-demo \
+  --name $FUNCTION_APP_NAME \
+  --resource-group $RESOURCE_GROUP \
   --query "defaultHostName" \
   --output tsv
 ```
 
-**Save this URL:** `https://func-courtlistener-mcp.azurewebsites.net`
+**Save this URL:** `https://<FUNCTION_APP_NAME>.azurewebsites.net`
 
-## 6. Create App Service for Teams Bot
+## 5. Create App Service for Teams Bot
 
 ```bash
 az appservice plan create \
-  --name plan-courtlistener-bot \
-  --resource-group rg-courtlistener-demo \
-  --location eastus \
+  --name $APP_SERVICE_PLAN_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --location $LOCATION \
   --sku B1 \
   --is-linux
 
 az webapp create \
-  --name app-courtlistener-bot \
-  --resource-group rg-courtlistener-demo \
-  --plan plan-courtlistener-bot \
+  --name $APP_SERVICE_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --plan $APP_SERVICE_PLAN_NAME \
   --runtime "DOTNETCORE:8.0"
 ```
 
@@ -190,13 +175,13 @@ az webapp create \
 
 ```bash
 az webapp show \
-  --name app-courtlistener-bot \
-  --resource-group rg-courtlistener-demo \
+  --name $APP_SERVICE_NAME \
+  --resource-group $RESOURCE_GROUP \
   --query "defaultHostName" \
   --output tsv
 ```
 
-**Save this URL:** `https://app-courtlistener-bot.azurewebsites.net`
+**Save this URL:** `https://<APP_SERVICE_NAME>.azurewebsites.net`
 
 ### Update Bot Endpoint
 
@@ -204,43 +189,46 @@ Now update the bot's messaging endpoint:
 
 ```bash
 az bot update \
-  --name bot-courtlistener-demo \
-  --resource-group rg-courtlistener-demo \
-  --endpoint "https://app-courtlistener-bot.azurewebsites.net/api/messages"
+  --name $BOT_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --endpoint "https://<APP_SERVICE_NAME>.azurewebsites.net/api/messages"
 ```
 
-## 7. Configure Teams Channel
+## 6. Configure Teams Channel
 
 ```bash
 # Enable Microsoft Teams channel
 az bot msteams create \
-  --name bot-courtlistener-demo \
-  --resource-group rg-courtlistener-demo
+  --name $BOT_NAME \
+  --resource-group $RESOURCE_GROUP
 ```
 
 ## Summary
 
-At this point, you should have:
+At this point, you should have the following resources created:
 
-1. **Resource Group:** `rg-courtlistener-demo`
+1. **Resource Group:** `$RESOURCE_GROUP`
 2. **Azure OpenAI:**
-   - Name: `openai-courtlistener-demo`
-   - Endpoint: `https://openai-courtlistener-demo.openai.azure.com/`
-   - API Key: `<saved>`
-   - Deployment: `gpt-4.1`
+    - Name: `$OPENAI_NAME`
+    - Endpoint: `$OPENAI_ENDPOINT` (regional format)
+    - API Key: `$OPENAI_API_KEY`
+    - Deployment: `$OPENAI_DEPLOYMENT_NAME`
 
 3. **Bot Registration:**
-   - Bot Name: `bot-courtlistener-demo`
-   - App ID: `<saved>`
-   - App Secret: `<saved>`
+    - Bot Name: `$BOT_NAME`
+    - App ID: `$APP_ID`
+    - App Secret: `$APP_SECRET`
+    - Tenant ID: `$TENANT_ID`
 
 4. **Function App (MCP Server):**
-   - Name: `func-courtlistener-mcp`
-   - URL: `https://func-courtlistener-mcp.azurewebsites.net`
+    - Name: `$FUNCTION_APP_NAME`
+    - URL: `https://$FUNCTION_APP_NAME.azurewebsites.net`
 
 5. **App Service (Teams Bot):**
-   - Name: `app-courtlistener-bot`
-   - URL: `https://app-courtlistener-bot.azurewebsites.net`
+    - Name: `$APP_SERVICE_NAME`
+    - URL: `https://$APP_SERVICE_NAME.azurewebsites.net`
+
+All values are stored in environment variables for use in subsequent steps.
 
 ## Next Steps
 

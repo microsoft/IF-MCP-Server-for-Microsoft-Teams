@@ -5,12 +5,15 @@ A demonstration project showing how to build a Microsoft Teams bot using the Mod
 ## Overview
 
 This project demonstrates:
+
 - Building a custom **MCP server** as an Azure Function
 - Integrating the **Court Listener REST API** for case law research
 - Using **Microsoft Dataverse** for response caching
 - Creating a **Teams bot** with Bot Framework SDK
 - Leveraging **Azure OpenAI** for natural language understanding
 - Connecting MCP clients to standalone MCP servers
+
+>**Important:** This demo uses the Microsoft Bot Framework which is scheduled for end of support on December 31, 2025. You can use this demo beyond that date, but understand that this demo is not intended to be used in production for a long period of time. The demo exists to merely show the concepts of architecture and functionality. For production usage, the dependencies of the _web application_ (Teams Bot) should be updated to use the Microsoft Agents SDK. Once the end-of-support date has been reached, we will update the repo with the necessary changes that leverage the Microsoft Agents SDK.
 
 ## Architecture
 
@@ -32,7 +35,7 @@ This project demonstrates:
 │                                                                    │
 │  ┌─────────────────┐          ┌────────────────────────────────┐ │
 │  │ Azure OpenAI    │          │    MCP Client                  │ │
-│  │ (GPT-4)         │          │    - HTTP/JSON-RPC protocol    │ │
+│  │ (GPT-4.1)       │          │    - HTTP/JSON-RPC protocol    │ │
 │  │                 │          │    - Tool invocation           │ │
 │  └─────────────────┘          └────────────────────────────────┘ │
 └────────────────────────────────────────┬─────────────────────────┘
@@ -82,7 +85,7 @@ This project demonstrates:
 - **Purpose:** Teams interface for legal research
 - **Features:**
   - Bot Framework integration
-  - Azure OpenAI (GPT-4) for intent recognition
+  - Azure OpenAI (GPT-4.1) for intent recognition
   - MCP client for calling the MCP server
   - Natural language query processing
   - Formatted response generation
@@ -101,7 +104,7 @@ This project demonstrates:
   - Intent detection from user queries
   - Tool and parameter extraction
   - Response formatting for Teams
-  - GPT-4 deployment
+  - GPT-4.1 deployment
 
 ## Project Structure
 
@@ -150,35 +153,42 @@ mcp-teams/
 - .NET 8 SDK
 - Azure Functions Core Tools
 - Azure CLI
-- Power Platform environment
+- Power Platform environment (with associated Azure subscription)
 - Microsoft Teams admin access (or custom app upload permission)
 
 ## Getting Started
 
-Follow the setup guides in order:
+Deploying the demo requires approximately **90 minutes**.
 
-1. **[Azure Setup](./docs/azure-setup.md)**
+You can view the [Quick Start Guide](./QUICKSTART.md) for faster reference. However, for your first deployment, we encourage you to follow the setup guides in order:
+
+1. **[Resource Identification](./docs/resource-identification.md)** (10 Minutes)
+    - Set all resource name variables
+    - Verify name availability
+    - Save variables for later use
+
+2. **[Azure Setup](./docs/azure-setup.md)** (30 Minutes)
    - Create Azure OpenAI resource
    - Create Bot Service registration
    - Create Function App for MCP server
    - Create App Service for Teams bot
 
-2. **[Dataverse Setup](./docs/dataverse-setup.md)**
+3. **[Dataverse Setup](./docs/dataverse-setup.md)** (15 Minutes)
    - Create Power Platform environment
    - Configure Service Principal access
    - Create custom cache table
 
-3. **[MCP Server Deployment](./docs/mcp-server-setup.md)**
+4. **[MCP Server Deployment](./docs/mcp-server-setup.md)** (15 Minutes)
    - Configure and test locally
    - Deploy to Azure Functions
    - Verify endpoints
 
-4. **[Teams Bot Deployment](./docs/teams-bot-setup.md)**
+5. **[Teams Bot Deployment](./docs/teams-bot-setup.md)** (15 Minutes)
    - Configure and test locally
    - Deploy to Azure App Service
    - Configure bot endpoint
 
-5. **[Teams App Registration](./docs/teams-app-registration.md)**
+6. **[Teams App Registration](./docs/teams-app-registration.md)** (10 Minutes)
    - Create Teams app package
    - Install in Microsoft Teams
    - Test the bot
@@ -321,6 +331,7 @@ dotnet publish -c Release
   "Dataverse__ClientId": "<app-id>",
   "Dataverse__ClientSecret": "<secret>",
   "Dataverse__TenantId": "<tenant-id>",
+  "Dataverse__TableName": "<table-name-including-prefix>"
   "Cache__ExpirationDays": "30"
 }
 ```
@@ -330,9 +341,11 @@ dotnet publish -c Release
 {
   "MicrosoftAppId": "<bot-app-id>",
   "MicrosoftAppPassword": "<bot-secret>",
+  "MicrosoftAppTenantId": "<tenant-id>",
+  "MicrosoftAppType": "SingleTenant",
   "AzureOpenAI__Endpoint": "https://yourservice.openai.azure.com/",
   "AzureOpenAI__ApiKey": "<openai-key>",
-  "AzureOpenAI__DeploymentName": "gpt-4",
+  "AzureOpenAI__DeploymentName": "gpt-4.1",
   "McpServer__BaseUrl": "https://func-courtlistener-mcp.azurewebsites.net",
   "McpServer__FunctionKey": "<function-key>"
 }
@@ -349,7 +362,7 @@ dotnet publish -c Release
 ### Logs
 ```bash
 # MCP Server
-az functionapp log tail --name func-courtlistener-mcp --resource-group rg-courtlistener-demo
+az webapp log tail --name func-courtlistener-mcp --resource-group rg-courtlistener-demo
 
 # Teams Bot
 az webapp log tail --name app-courtlistener-bot --resource-group rg-courtlistener-demo
@@ -384,21 +397,25 @@ This demo showcases MCP as a **standalone service architecture**:
 ## Extending the Demo
 
 ### Add More Tools
+
 1. Add new methods to `McpServerService.cs`
 2. Register tools in `HandleToolsList()`
 3. Implement tool logic in `HandleToolsCallAsync()`
 
 ### Add More Clients
+
 1. **Copilot Studio**: Connect to MCP server via custom connector
 2. **Power Apps**: Call MCP server via Power Automate
 3. **Desktop App**: Use MCP client library
 
 ### Enhance Caching
+
 - Add cache invalidation API
 - Implement cache warming
 - Add cache analytics
 
 ### Improve AI
+
 - Fine-tune prompts for better intent detection
 - Add multi-turn conversations
 - Implement clarifying questions
@@ -406,6 +423,7 @@ This demo showcases MCP as a **standalone service architecture**:
 ## Troubleshooting
 
 See individual setup guides for detailed troubleshooting:
+- [Resource Identification](./docs/resource-identification.md)
 - [Azure Setup Issues](./docs/azure-setup.md)
 - [MCP Server Issues](./docs/mcp-server-setup.md)
 - [Teams Bot Issues](./docs/teams-bot-setup.md)
@@ -430,6 +448,7 @@ This is a demonstration project. Feel free to fork and adapt for your own use ca
 ## Support
 
 For issues or questions:
+
 - Review the documentation in `/docs`
 - Check Azure resource configurations
 - Review Application Insights logs

@@ -11,7 +11,8 @@ public class DataverseCache : IDataverseCache
 {
     private readonly ServiceClient? _serviceClient;
     private readonly int _expirationDays;
-    private readonly string _tableName = "cr3f3_courtlistenercache";
+    private readonly string _tableName;
+    private readonly string _tablePrefix;
 
     public DataverseCache(IConfiguration configuration)
     {
@@ -20,6 +21,13 @@ public class DataverseCache : IDataverseCache
         var clientSecret = configuration["Dataverse:ClientSecret"];
         var tenantId = configuration["Dataverse:TenantId"];
 
+        // Get table name from configuration (includes prefix, e.g., "cr3f3_courtlistenercache")
+        _tableName = configuration["Dataverse:TableName"] ?? throw new ArgumentException("Dataverse:TableName is required");
+
+        // Extract the prefix from the table name (everything before the first underscore)
+        var underscoreIndex = _tableName.IndexOf('_');
+        _tablePrefix = underscoreIndex > 0 ? _tableName.Substring(0, underscoreIndex) : string.Empty;
+  
         _expirationDays = int.TryParse(configuration["Cache:ExpirationDays"], out var days) ? days : 30;
 
         // Only initialize if all required configuration is present
@@ -46,12 +54,12 @@ public class DataverseCache : IDataverseCache
 
             var query = new QueryExpression(_tableName)
             {
-                ColumnSet = new ColumnSet("cr3f3_responsedata", "cr3f3_expirationdate"),
+                ColumnSet = new ColumnSet($"{_tablePrefix}_responsedata", $"{_tablePrefix}_expirationdate"),
                 Criteria = new FilterExpression
                 {
                     Conditions =
                     {
-                        new ConditionExpression("cr3f3_cachekeyhash", ConditionOperator.Equal, hash)
+                        new ConditionExpression($"{_tablePrefix}_cachekeyhash", ConditionOperator.Equal, hash)
                     }
                 }
             };
@@ -64,7 +72,7 @@ public class DataverseCache : IDataverseCache
             }
 
             var entity = results.Entities[0];
-            var expirationDate = entity.GetAttributeValue<DateTime>("cr3f3_expirationdate");
+            var expirationDate = entity.GetAttributeValue<DateTime>($"{_tablePrefix}_expirationdate");
 
             if (expirationDate < DateTime.UtcNow)
             {
@@ -73,7 +81,7 @@ public class DataverseCache : IDataverseCache
                 return null;
             }
 
-            return entity.GetAttributeValue<string>("cr3f3_responsedata");
+            return entity.GetAttributeValue<string>($"{_tablePrefix}_responsedata");
         }
         catch (Exception ex)
         {
@@ -97,11 +105,11 @@ public class DataverseCache : IDataverseCache
 
             var entity = new Entity(_tableName)
             {
-                ["cr3f3_name"] = $"Cache_{hash.Substring(0, 10)}",
-                ["cr3f3_cachekeyhash"] = hash,
-                ["cr3f3_cachekey"] = cacheKey.Length > 1000 ? cacheKey.Substring(0, 1000) : cacheKey,
-                ["cr3f3_responsedata"] = value,
-                ["cr3f3_expirationdate"] = expirationDate
+                [$"{_tablePrefix}_name"] = $"Cache_{hash.Substring(0, 10)}",
+                [$"{_tablePrefix}_cachekeyhash"] = hash,
+                [$"{_tablePrefix}_cachekey"] = cacheKey.Length > 1000 ? cacheKey.Substring(0, 1000) : cacheKey,
+                [$"{_tablePrefix}_responsedata"] = value,
+                [$"{_tablePrefix}_expirationdate"] = expirationDate
             };
 
             await Task.Run(() => _serviceClient.Create(entity));

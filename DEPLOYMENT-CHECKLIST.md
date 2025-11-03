@@ -3,6 +3,7 @@
 Use this checklist to track your deployment progress.
 
 ## Prerequisites
+
 - [ ] Azure subscription with appropriate permissions
 - [ ] Azure CLI installed and configured
 - [ ] .NET 8 SDK installed
@@ -10,15 +11,64 @@ Use this checklist to track your deployment progress.
 - [ ] Power Platform admin access
 - [ ] Teams admin access (or custom app upload permission)
 
-## 1. Azure Resources Setup
+## 1. Resource Identification
+
+- [ ] Complete [Resource Identification](./docs/resource-identification.md)
+- [ ] Set all resource name variables in your terminal
+- [ ] Verify globally unique names are available
+- [ ] (Optional) Save variables to a file for later sessions
+
+**Documentation:** [docs/resource-identification.md](./docs/resource-identification.md)
+
+### Variable Reference
+
+  All variables used throughout deployment:
+
+  | Variable | Set In | Purpose |
+  |----------|--------|---------|
+  | `SUBSCRIPTION_ID` | [Resource Identification](./docs/resource-identification.md#set-your-azure-context) | Your Azure subscription |
+  | `TENANT_ID` | [Resource Identification](./docs/resource-identification.md#set-your-azure-context) | Azure AD tenant ID |
+  | `USER_ID` | [Resource Identification](./docs/resource-identification.md#set-your-azure-context) | Your user principal ID |
+  | `LOCATION` | [Resource Identification](./docs/resource-identification.md#define-resource-names) | Azure region |
+  | `RESOURCE_GROUP` | [Resource Identification](./docs/resource-identification.md#define-resource-names) | Resource group name |
+  | `OPENAI_NAME` | [Resource Identification](./docs/resource-identification.md#define-resource-names) | Azure OpenAI resource name |
+  | `OPENAI_DEPLOYMENT_NAME` | [Resource Identification](./docs/resource-identification.md#define-resource-names) | OpenAI deployment name |
+  | `BOT_NAME` | [Resource Identification](./docs/resource-identification.md#define-resource-names) | Bot resource name |
+  | `BOT_DISPLAY_NAME` | [Resource Identification](./docs/resource-identification.md#define-resource-names) | Bot display name |
+  | `STORAGE_ACCOUNT_NAME` | [Resource Identification](./docs/resource-identification.md#define-resource-names) | Storage account (globally unique) |
+  | `FUNCTION_APP_NAME` | [Resource Identification](./docs/resource-identification.md#define-resource-names) | Function App (globally unique) |
+  | `APP_SERVICE_PLAN_NAME` | [Resource Identification](./docs/resource-identification.md#define-resource-names) | App Service Plan name |
+  | `APP_SERVICE_NAME` | [Resource Identification](./docs/resource-identification.md#define-resource-names) | App Service (globally unique) |
+  | `KEY_VAULT_NAME` | [Resource Identification](./docs/resource-identification.md#define-resource-names) | Key Vault (globally unique) |
+  | `DATAVERSE_ENV_NAME` | [Resource Identification](./docs/resource-identification.md#define-resource-names) | Dataverse environment name |
+  | `APP_ID` | [Azure Setup](./docs/azure-setup.md#create-app-registration) | Bot App Registration ID |
+  | `APP_SECRET` | [Azure Setup](./docs/azure-setup.md#create-app-registration) | Bot App Secret |
+  | `OPENAI_ENDPOINT` | [Azure Setup](./docs/azure-setup.md#get-the-endpoint-and-key) | Azure OpenAI endpoint |
+  | `OPENAI_API_KEY` | [Azure Setup](./docs/azure-setup.md#get-the-endpoint-and-key) | Azure OpenAI API key |
+  | `FUNCTION_URL` | [MCP Server Setup](./docs/mcp-server-setup.md#get-the-function-url-and-key) | Function App URL |
+  | `FUNCTION_KEY` | [MCP Server Setup](./docs/mcp-server-setup.md#get-the-function-url-and-key) | Function App key |
+  | `DATAVERSE_ENV_DISPLAY_NAME` | [Resource Identification](./docs/resource-identification.md#define-resource-names) | Dataverse environment name |
+  | `DATAVERSE_APP_DISPLAY_NAME` | [Resource Identification](./docs/resource-identification.md#define-resource-names) | Dataverse app registration name |
+  | `DATAVERSE_TABLE_DISPLAY_NAME` | [Resource Identification](./docs/resource-identification.md#define-resource-names) | Dataverse table display name |
+  | `DATAVERSE_TABLE_NAME` | [Resource Identification](./docs/resource-identification.md#define-resource-names) | Dataverse table schema name |
+  | `DATAVERSE_URL` | [Dataverse Setup](./docs/dataverse-setup.md#get-dataverse-environment-url) | Dataverse environment URL |
+  | `DATAVERSE_APP_ID` | [Dataverse Setup](./docs/dataverse-setup.md#create-app-registration) | Service Principal App ID |
+  | `DATAVERSE_APP_SECRET` | [Dataverse Setup](./docs/dataverse-setup.md#create-app-registration) | Service Principal Secret |
+  | `DATAVERSE_TABLE_SCHEMA` | [Dataverse Setup](./docs/dataverse-setup.md#verify-table-schema-name) | Full table name with prefix |
+  | `DATAVERSE_TABLE_PREFIX` | [Dataverse Setup](./docs/dataverse-setup.md#verify-table-schema-name) | Auto-generated table prefix |
+
+## 2. Azure Resources Setup
 
 - [ ] Login to Azure CLI
 - [ ] Create resource group: `rg-courtlistener-demo`
 - [ ] Create Azure OpenAI resource
-- [ ] Deploy GPT-4 model
-- [ ] Save OpenAI endpoint and API key
+- [ ] Deploy GPT-4.1 model
+- [ ] Save OpenAI endpoint (regional format, e.g., https://eastus.api.cognitive.microsoft.com/) and API key
 - [ ] Create Bot Service app registration
 - [ ] Save Bot App ID and secret
+- [ ] Add Microsoft Graph API permissions to Bot App Registration
+- [ ] Grant admin consent for API permissions
+- [ ] Save Tenant ID
 - [ ] Create Azure Function App for MCP server
 - [ ] Save Function App URL
 - [ ] Create Azure App Service for Teams bot
@@ -28,7 +78,7 @@ Use this checklist to track your deployment progress.
 
 **Documentation:** [docs/azure-setup.md](./docs/azure-setup.md)
 
-## 2. Dataverse Setup
+## 3. Dataverse Setup
 
 - [ ] Create Power Platform environment
 - [ ] Save Dataverse environment URL
@@ -41,11 +91,11 @@ Use this checklist to track your deployment progress.
 - [ ] Add column: `responsedata` (multiline text, required)
 - [ ] Add column: `expirationdate` (datetime, required)
 - [ ] Verify table schema name (e.g., `cr3f3_courtlistenercache`)
-- [ ] Update code if prefix differs from `cr3f3_`
+- [ ] Set `DATAVERSE_TABLE_SCHEMA` variable with full table name including prefix
 
 **Documentation:** [docs/dataverse-setup.md](./docs/dataverse-setup.md)
 
-## 3. MCP Server Configuration
+## 4. MCP Server Configuration
 
 - [ ] Navigate to `mcp-server` directory
 - [ ] Update `local.settings.json` with:
@@ -53,6 +103,7 @@ Use this checklist to track your deployment progress.
   - [ ] Dataverse Client ID
   - [ ] Dataverse Client Secret
   - [ ] Dataverse Tenant ID
+  - [ ] Dataverse Table Name (with prefix)
   - [ ] Court Listener API key (optional)
 - [ ] Run `dotnet restore`
 - [ ] Run `dotnet build`
@@ -64,7 +115,7 @@ Use this checklist to track your deployment progress.
 
 **Documentation:** [docs/mcp-server-setup.md](./docs/mcp-server-setup.md)
 
-## 4. MCP Server Deployment
+## 5. MCP Server Deployment
 
 - [ ] Configure Azure Function App settings via Azure CLI
 - [ ] Run `func azure functionapp publish func-courtlistener-mcp`
@@ -77,12 +128,14 @@ Use this checklist to track your deployment progress.
 
 **Documentation:** [docs/mcp-server-setup.md](./docs/mcp-server-setup.md)
 
-## 5. Teams Bot Configuration
+## 6. Teams Bot Configuration
 
 - [ ] Navigate to `teams-bot` directory
 - [ ] Update `appsettings.json` with:
   - [ ] Microsoft App ID (Bot)
   - [ ] Microsoft App Password (Bot)
+  - [ ] Microsoft App Tenant ID
+  - [ ] Microsoft App Type (SingleTenant)
   - [ ] Azure OpenAI endpoint
   - [ ] Azure OpenAI API key
   - [ ] Azure OpenAI deployment name
@@ -95,7 +148,7 @@ Use this checklist to track your deployment progress.
 
 **Documentation:** [docs/teams-bot-setup.md](./docs/teams-bot-setup.md)
 
-## 6. Teams Bot Deployment
+## 7. Teams Bot Deployment
 
 - [ ] Configure Azure App Service settings via Azure CLI
 - [ ] Build and publish: `dotnet publish -c Release`
@@ -109,7 +162,7 @@ Use this checklist to track your deployment progress.
 
 **Documentation:** [docs/teams-bot-setup.md](./docs/teams-bot-setup.md)
 
-## 7. Teams App Package
+## 8. Teams App Package
 
 - [ ] Navigate to `teams-bot/TeamsAppManifest`
 - [ ] Generate new GUID for Teams App ID
@@ -122,7 +175,7 @@ Use this checklist to track your deployment progress.
 
 **Documentation:** [docs/teams-app-registration.md](./docs/teams-app-registration.md)
 
-## 8. Teams Installation
+## 9. Teams Installation
 
 - [ ] Open Microsoft Teams
 - [ ] Navigate to Apps > Manage your apps
@@ -137,7 +190,7 @@ Use this checklist to track your deployment progress.
 
 **Documentation:** [docs/teams-app-registration.md](./docs/teams-app-registration.md)
 
-## 9. Verification
+## 10. Verification
 
 - [ ] MCP server health endpoint responds
 - [ ] MCP server tools list returns 4 tools
@@ -150,7 +203,7 @@ Use this checklist to track your deployment progress.
 - [ ] No errors in Application Insights
 - [ ] Bot handles errors gracefully
 
-## 10. Post-Deployment
+## 11. Post-Deployment
 
 - [ ] Share bot with team members
 - [ ] Monitor Application Insights dashboards
@@ -166,13 +219,15 @@ Use this checklist to track your deployment progress.
 Keep track of your configuration values:
 
 **Azure OpenAI:**
-- Endpoint: `_______________________________`
+- Endpoint (regional): `_______________________________`  
+  (Format: https://{region}.api.cognitive.microsoft.com/)
 - API Key: `_______________________________`
 - Deployment: `_______________________________`
 
 **Bot Service:**
 - App ID: `_______________________________`
 - App Secret: `_______________________________`
+- Tenant ID: `_______________________________`
 
 **MCP Server:**
 - Function URL: `_______________________________`

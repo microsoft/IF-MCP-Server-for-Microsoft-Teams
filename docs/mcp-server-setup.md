@@ -4,6 +4,7 @@ This guide walks you through deploying the Court Listener MCP Server to Azure Fu
 
 ## Prerequisites
 
+- Completed [Resource Identification](./resource-identification.md)
 - Completed [Azure Setup](./azure-setup.md)
 - Completed [Dataverse Setup](./dataverse-setup.md)
 - .NET 8 SDK installed
@@ -31,6 +32,7 @@ Update `local.settings.json` with your values:
     "Dataverse__ClientId": "<YOUR_DATAVERSE_APP_ID>",
     "Dataverse__ClientSecret": "<YOUR_DATAVERSE_SECRET>",
     "Dataverse__TenantId": "<YOUR_TENANT_ID>",
+    "Dataverse__TableName": "<YOUR_DATAVERSE_TABLE_SCHEMA_INCLUDING_PREFIX>",
     "Cache__ExpirationDays": "30"
   }
 }
@@ -130,21 +132,18 @@ curl -X POST http://localhost:7071/api/mcp \
 ### Configure Azure Function App Settings
 
 ```bash
-# Set the Function App name
-FUNC_APP_NAME="func-courtlistener-mcp"
-RESOURCE_GROUP="rg-courtlistener-demo"
-
 # Configure application settings
 az functionapp config appsettings set \
-  --name $FUNC_APP_NAME \
+  --name $FUNCTION_APP_NAME \
   --resource-group $RESOURCE_GROUP \
   --settings \
     "CourtListener__BaseUrl=https://www.courtlistener.com/api/rest/v3/" \
-    "CourtListener__ApiKey=" \
-    "Dataverse__Environment=https://yourorg.crm.dynamics.com" \
-    "Dataverse__ClientId=<YOUR_DATAVERSE_APP_ID>" \
-    "Dataverse__ClientSecret=<YOUR_DATAVERSE_SECRET>" \
-    "Dataverse__TenantId=<YOUR_TENANT_ID>" \
+    "CourtListener__ApiKey='<YOUR_COURTLISTENER.COM_API_KEY>' \
+    "Dataverse__Environment=$DATAVERSE_URL" \
+    "Dataverse__ClientId=$DATAVERSE_APP_ID" \
+    "Dataverse__ClientSecret=$DATAVERSE_APP_SECRET" \
+    "Dataverse__TenantId=$TENANT_ID" \
+    "Dataverse__TableName=$DATAVERSE_TABLE_SCHEMA" \
     "Cache__ExpirationDays=30"
 ```
 
@@ -152,7 +151,7 @@ az functionapp config appsettings set \
 
 ```bash
 # From the mcp-server directory
-func azure functionapp publish $FUNC_APP_NAME
+func azure functionapp publish $FUNCTION_APP_NAME
 ```
 
 Wait for the deployment to complete. You should see:
@@ -165,17 +164,17 @@ Remote build succeeded!
 ### Get the Function URL and Key
 
 ```bash
-# Get the default host key (function key)
+# Get the default host key
 FUNCTION_KEY=$(az functionapp keys list \
-  --name $FUNC_APP_NAME \
+  --name $FUNCTION_APP_NAME \
   --resource-group $RESOURCE_GROUP \
   --query "functionKeys.default" \
   --output tsv)
 
 echo "Function Key: $FUNCTION_KEY"
 
-# Get the Function App URL
-FUNCTION_URL="https://$FUNC_APP_NAME.azurewebsites.net"
+# Set the Function URL
+FUNCTION_URL="https://$FUNCTION_APP_NAME.azurewebsites.net"
 echo "Function URL: $FUNCTION_URL"
 ```
 
@@ -188,13 +187,13 @@ echo "Function URL: $FUNCTION_URL"
 ### Test health endpoint
 
 ```bash
-curl "https://$FUNC_APP_NAME.azurewebsites.net/api/health"
+curl "https://$FUNCTION_APP_NAME.azurewebsites.net/api/health"
 ```
 
 ### Test MCP endpoint with authentication
 
 ```bash
-curl -X POST "https://$FUNC_APP_NAME.azurewebsites.net/api/mcp?code=$FUNCTION_KEY" \
+curl -X POST "https://$FUNCTION_APP_NAME.azurewebsites.net/api/mcp?code=$FUNCTION_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
@@ -211,8 +210,8 @@ Expected response should list all 4 tools: `search_opinions`, `get_opinion_detai
 
 ```bash
 # Stream logs
-az functionapp log tail \
-  --name $FUNC_APP_NAME \
+az webapp log tail \
+  --name $FUNCTION_APP_NAME \
   --resource-group $RESOURCE_GROUP
 ```
 
@@ -242,65 +241,61 @@ az functionapp log tail \
 
 ### Use Azure Key Vault (Recommended for Production)
 
+> **Note:** Azure Key Vault now uses RBAC by default. If your Key Vault uses Access Policies, you can still use az keyvault set-policy, but RBAC is recommended.
+
 ```bash
 # Create Key Vault
 az keyvault create \
-  --name kv-courtlistener \
+  --name $KEY_VAULT_NAME \
   --resource-group $RESOURCE_GROUP \
-  --location eastus
+  --location $LOCATION
 
 # Enable system-assigned managed identity for Function App
 az functionapp identity assign \
-  --name $FUNC_APP_NAME \
+  --name $FUNCTION_APP_NAME \
   --resource-group $RESOURCE_GROUP
 
 # Get the identity
 IDENTITY=$(az functionapp identity show \
-  --name $FUNC_APP_NAME \
+  --name $FUNCTION_APP_NAME \
   --resource-group $RESOURCE_GROUP \
   --query principalId \
   --output tsv)
 
-# Get subscription Id
-SUBSCRIPTION_ID=$(az account show --query id -o tsv)
-
-# Get your user Id
-USER_ID=$(az ad signed-in-user show --query id -o tsv)
-
-# Add yourself as a writer
+# For your user account to manage secrets
 az role assignment create \
-    --role "Key Vault Secrets Officer" \
-    --assignee $USER_ID \
-    --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.KeyVault/vaults/kv-courtlistener"
+  --role "Key Vault Secrets Officer" \
+  --assignee $USER_ID \
+  --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.KeyVault/vaults/$KEY_VAULT_NAME"
 
-# The function app as a secrets reader
+# Grant Key Vault Secrets User role to the identity
 az role assignment create \
-    --role "Key Vault Secrets User" \
-    --assignee $IDENTITY \
-    --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.KeyVault/vaults/kv-courtlistener"
+  --role "Key Vault Secrets User" \
+  --assignee $IDENTITY \
+  --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.KeyVault/vaults/$KEY_VAULT_NAME"
 
 # Store secrets
-az keyvault secret set --vault-name kv-courtlistener --name "DataverseClientSecret" --value "<YOUR_SECRET>"
-az keyvault secret set --vault-name kv-courtlistener --name "CourtListenerApiKey" --value "<YOUR_KEY>"
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "DataverseClientSecret" --value "<YOUR_SECRET>"
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "CourtListenerApiKey" --value "<YOUR_KEY>"
 
 # Update app settings to reference Key Vault
 az functionapp config appsettings set \
-  --name $FUNC_APP_NAME \
+  --name $FUNCTION_APP_NAME \
   --resource-group $RESOURCE_GROUP \
   --settings \
-    "Dataverse__ClientSecret=@Microsoft.KeyVault(SecretUri=https://kv-courtlistener.vault.azure.net/secrets/DataverseClientSecret/)" \
-    "CourtListener__ApiKey=@Microsoft.KeyVault(SecretUri=https://kv-courtlistener.vault.azure.net/secrets/CourtListenerApiKey/)"
+    "Dataverse__ClientSecret=@Microsoft.KeyVault(SecretUri=https://$KEY_VAULT_NAME.vault.azure.net/secrets/DataverseClientSecret/)" \
+    "CourtListener__ApiKey=@Microsoft.KeyVault(SecretUri=https://$KEY_VAULT_NAME.vault.azure.net/secrets/CourtListenerApiKey/)"
 ```
 
 ## Configuration Summary
 
 Your MCP Server should now be deployed with:
 
-- **URL:** `https://func-courtlistener-mcp.azurewebsites.net`
+- **URL:** `https://<FUNCTION_APP_NAME>.azurewebsites.net`
 - **Function Key:** `<saved>`
 - **Endpoints:**
   - Health: `GET /api/health`
-  - MCP: `POST /api/mcp?code=<function-key>`
+  - MCP: `POST /api/mcp?code=<FUNCTION_KEY>`
 - **Tools:**
   - `search_opinions`
   - `get_opinion_details`

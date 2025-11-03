@@ -4,6 +4,7 @@ This guide walks you through deploying the Court Listener Teams Bot to Azure App
 
 ## Prerequisites
 
+- Completed [Resource Identification](./resource-identification.md)
 - Completed [Azure Setup](./azure-setup.md)
 - Completed [MCP Server Deployment](./mcp-server-setup.md)
 - .NET 8 SDK installed
@@ -27,21 +28,25 @@ Update `appsettings.json` with your values:
     }
   },
   "AllowedHosts": "*",
-  "MicrosoftAppId": "<YOUR_BOT_APP_ID>",
-  "MicrosoftAppPassword": "<YOUR_BOT_APP_SECRET>",
+  "MicrosoftAppId": "Use value from $APP_ID",
+  "MicrosoftAppPassword": "Use value from $APP_SECRET",
+  "MicrosoftAppTenantId": "Use value from $TENANT_ID",
+  "MicrosoftAppType": "SingleTenant",
   "AzureOpenAI": {
-    "Endpoint": "https://openai-courtlistener-demo.openai.azure.com/",
-    "ApiKey": "<YOUR_AZURE_OPENAI_KEY>",
-    "DeploymentName": "gpt-4.1"
+    "Endpoint": "Use value from $OPENAI_ENDPOINT",
+    "ApiKey": "Use value from $OPENAI_API_KEY",
+    "DeploymentName": "Use value from $OPENAI_DEPLOYMENT_NAME"
   },
   "McpServer": {
-    "BaseUrl": "https://func-courtlistener-mcp.azurewebsites.net",
-    "FunctionKey": "<YOUR_MCP_FUNCTION_KEY>"
+    "BaseUrl": "Use value from $FUNCTION_URL",
+    "FunctionKey": "Use value from $FUNCTION_KEY"
   }
 }
 ```
 
 > **Important:** For local development, create `appsettings.Development.json` with the same structure (this file is gitignored).
+
+> **Note:** The `MicrosoftAppTenantId` and `MicrosoftAppType` settings are required for SingleTenant bot authentication with Bot Framework Service.
 
 ## 2. Test Locally
 
@@ -91,22 +96,19 @@ Copy the HTTPS URL (e.g., `https://abc123.ngrok.io`) and update your bot's messa
 ### Configure App Service Settings
 
 ```bash
-# Set variables
-APP_SERVICE_NAME="app-courtlistener-bot"
-RESOURCE_GROUP="rg-courtlistener-demo"
-
-# Configure application settings
 az webapp config appsettings set \
   --name $APP_SERVICE_NAME \
   --resource-group $RESOURCE_GROUP \
   --settings \
-    "MicrosoftAppId=<YOUR_BOT_APP_ID>" \
-    "MicrosoftAppPassword=<YOUR_BOT_APP_SECRET>" \
-    "AzureOpenAI__Endpoint=https://openai-courtlistener-demo.openai.azure.com/" \
-    "AzureOpenAI__ApiKey=<YOUR_AZURE_OPENAI_KEY>" \
-    "AzureOpenAI__DeploymentName=gpt-4.1" \
-    "McpServer__BaseUrl=https://func-courtlistener-mcp.azurewebsites.net" \
-    "McpServer__FunctionKey=<YOUR_MCP_FUNCTION_KEY>"
+    "MicrosoftAppId=$APP_ID" \
+    "MicrosoftAppPassword=$APP_SECRET" \
+    "MicrosoftAppTenantId=$TENANT_ID" \
+    "MicrosoftAppType=SingleTenant" \
+    "AzureOpenAI__Endpoint=$OPENAI_ENDPOINT" \
+    "AzureOpenAI__ApiKey=$OPENAI_API_KEY" \
+    "AzureOpenAI__DeploymentName=$OPENAI_DEPLOYMENT_NAME" \
+    "McpServer__BaseUrl=$FUNCTION_URL" \
+    "McpServer__FunctionKey=$FUNCTION_KEY"
 ```
 
 ### Publish the Web App
@@ -139,17 +141,17 @@ Alternative using Visual Studio:
 ### Check the bot endpoint
 
 ```bash
-# Get the app service URL
-APP_URL=$(az webapp show \
+# Get the app service URL (should already be set, but verify)
+APP_SERVICE_URL=$(az webapp show \
   --name $APP_SERVICE_NAME \
   --resource-group $RESOURCE_GROUP \
   --query "defaultHostName" \
   --output tsv)
 
-echo "Bot URL: https://$APP_URL/api/messages"
+echo "Bot URL: https://$APP_SERVICE_URL/api/messages"
 
-# Test the endpoint (should return 405 Method Not Allowed for GET, which is expected)
-curl https://$APP_URL/api/messages
+# Test the endpoint
+curl https://$APP_SERVICE_URL/api/messages
 ```
 
 ### Test with Bot Framework Emulator (Must have ngrok configured)
@@ -167,9 +169,9 @@ curl https://$APP_URL/api/messages
 
 ```bash
 az bot update \
-  --name bot-courtlistener-demo \
+  --name $BOT_NAME \
   --resource-group $RESOURCE_GROUP \
-  --endpoint "https://$APP_URL/api/messages"
+  --endpoint "https://$APP_SERVICE_URL/api/messages"
 ```
 
 Or via Azure Portal:
@@ -217,8 +219,11 @@ az webapp log config \
 
 **Issue:** "401 Unauthorized" errors
 - **Solution:**
-  - Verify MicrosoftAppId and MicrosoftAppPassword are correct
-  - Ensure the bot registration is active
+  - Verify MicrosoftAppId, MicrosoftAppPassword, MicrosoftAppTenantId, and MicrosoftAppType are all configured correctly
+  - Ensure the App Registration has API permissions (Microsoft Graph User.Read) with admin consent granted
+  - Verify the bot resource has the Teams channel enabled (az bot msteams create)
+  - Confirm the App Registration sign-in audience is AzureADMyOrg (SingleTenant)
+  - Check that the bot resource msaAppType matches (SingleTenant)
 
 **Issue:** MCP calls fail
 - **Solution:**
@@ -236,16 +241,16 @@ az webapp log config \
 
 ### Use Azure Key Vault (Recommended for Production)
 
-> **NOTE:** The instructions below mimic the instructions for the Key Vault you setup previously. You can use the same Key Vault (recommended), if desired. To do so, simply ignore the first command.
+> **Note:** The instructions below mimic the instructions for the Key Vault you setup previously. You can use the same Key Vault (recommended), if desired. To do so, simply ignore the first command.
 
 ```bash
 # Create Key Vault (if not already created)
 az keyvault create \
-  --name kv-courtlistener \
+  --name $KEY_VAULT_NAME \
   --resource-group $RESOURCE_GROUP \
-  --location eastus
+  --location $LOCATION
 
-# Enable system-assigned managed identity
+# Enable system-assigned managed identity for Web App
 az webapp identity assign \
   --name $APP_SERVICE_NAME \
   --resource-group $RESOURCE_GROUP
@@ -257,25 +262,31 @@ IDENTITY=$(az webapp identity show \
   --query principalId \
   --output tsv)
 
-# The web app as a secrets reader
+# For your user account to manage secrets (if not done in the previous step)
 az role assignment create \
-    --role "Key Vault Secrets User" \
-    --assignee $IDENTITY \
-    --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.KeyVault/vaults/kv-courtlistener"
+  --role "Key Vault Secrets Officer" \
+  --assignee $USER_ID \
+  --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.KeyVault/vaults/$KEY_VAULT_NAME"
+
+# Grant Key Vault Secrets User role to the identity
+az role assignment create \
+  --role "Key Vault Secrets User" \
+  --assignee $IDENTITY \
+  --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.KeyVault/vaults/$KEY_VAULT_NAME"
 
 # Store secrets
-az keyvault secret set --vault-name kv-courtlistener --name "BotAppPassword" --value "<YOUR_BOT_SECRET>"
-az keyvault secret set --vault-name kv-courtlistener --name "AzureOpenAIKey" --value "<YOUR_OPENAI_KEY>"
-az keyvault secret set --vault-name kv-courtlistener --name "McpFunctionKey" --value "<YOUR_MCP_KEY>"
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "BotAppPassword" --value "<YOUR_BOT_SECRET>"
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "AzureOpenAIKey" --value "<YOUR_OPENAI_KEY>"
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "McpFunctionKey" --value "<YOUR_MCP_KEY>"
 
 # Update app settings to reference Key Vault
 az webapp config appsettings set \
   --name $APP_SERVICE_NAME \
   --resource-group $RESOURCE_GROUP \
   --settings \
-    "MicrosoftAppPassword=@Microsoft.KeyVault(SecretUri=https://kv-courtlistener.vault.azure.net/secrets/BotAppPassword/)" \
-    "AzureOpenAI__ApiKey=@Microsoft.KeyVault(SecretUri=https://kv-courtlistener.vault.azure.net/secrets/AzureOpenAIKey/)" \
-    "McpServer__FunctionKey=@Microsoft.KeyVault(SecretUri=https://kv-courtlistener.vault.azure.net/secrets/McpFunctionKey/)"
+    "MicrosoftAppPassword=@Microsoft.KeyVault(SecretUri=https://$KEY_VAULT_NAME.vault.azure.net/secrets/BotAppPassword/)" \
+    "AzureOpenAI__ApiKey=@Microsoft.KeyVault(SecretUri=https://$KEY_VAULT_NAME.vault.azure.net/secrets/AzureOpenAIKey/)" \
+    "McpServer__FunctionKey=@Microsoft.KeyVault(SecretUri=https://$KEY_VAULT_NAME.vault.azure.net/secrets/McpFunctionKey/)"
 ```
 
 ## 8. Enable HTTPS Only
