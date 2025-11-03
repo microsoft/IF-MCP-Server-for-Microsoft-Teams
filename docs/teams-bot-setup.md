@@ -295,7 +295,7 @@ Your Teams Bot should now be deployed with:
 - **Endpoint:** `https://app-courtlistener-bot.azurewebsites.net/api/messages`
 - **Bot ID:** `<YOUR_BOT_APP_ID>`
 - **Connected to:**
-  - Azure OpenAI (GPT-4)
+  - Azure OpenAI (GPT-4.1)
   - MCP Server (Court Listener API + Dataverse cache)
 
 ## Next Steps
