@@ -45,8 +45,8 @@ Use this checklist to track your deployment progress.
   | `APP_SECRET` | [Azure Setup](./docs/azure-setup.md#create-app-registration) | Bot App Secret |
   | `OPENAI_ENDPOINT` | [Azure Setup](./docs/azure-setup.md#get-the-endpoint-and-key) | Azure OpenAI endpoint |
   | `OPENAI_API_KEY` | [Azure Setup](./docs/azure-setup.md#get-the-endpoint-and-key) | Azure OpenAI API key |
-  | `FUNCTION_URL` | [MCP Server Setup](./docs/mcp-server-setup.md#get-the-function-url-and-key) | Function App URL |
-  | `FUNCTION_KEY` | [MCP Server Setup](./docs/mcp-server-setup.md#get-the-function-url-and-key) | Function App key |
+  | `FUNCTION_URL` | [MCP Server Setup](./docs/mcp-server-setup.md#get-the-function-url-and-key) | Function App base URL |
+  | `FUNCTION_KEY` | [MCP Server Setup](./docs/mcp-server-setup.md#get-the-function-url-and-key) | MCP extension system key |
   | `DATAVERSE_ENV_DISPLAY_NAME` | [Resource Identification](./docs/resource-identification.md#define-resource-names) | Dataverse environment name |
   | `DATAVERSE_APP_DISPLAY_NAME` | [Resource Identification](./docs/resource-identification.md#define-resource-names) | Dataverse app registration name |
   | `DATAVERSE_TABLE_DISPLAY_NAME` | [Resource Identification](./docs/resource-identification.md#define-resource-names) | Dataverse table display name |
@@ -109,7 +109,7 @@ Use this checklist to track your deployment progress.
 - [ ] Run `dotnet build`
 - [ ] Test locally with `func start`
 - [ ] Test health endpoint: `http://localhost:7071/api/health`
-- [ ] Test MCP initialize call
+- [ ] Test MCP initialize call on `/runtime/webhooks/mcp` endpoint
 - [ ] Test MCP tools/list call
 - [ ] Test a tool call (e.g., search_opinions)
 
@@ -119,14 +119,16 @@ Use this checklist to track your deployment progress.
 
 - [ ] Configure Azure Function App settings via Azure CLI
 - [ ] Run `func azure functionapp publish func-courtlistener-mcp`
-- [ ] Get Function App default key
-- [ ] Save Function URL and key
+- [ ] Get the `mcp_extension` system key (NOT the default function key)
+- [ ] Save Function URL and `mcp_extension` key
 - [ ] Test deployed health endpoint
-- [ ] Test deployed MCP endpoint with authentication
+- [ ] Test deployed MCP endpoint (`/runtime/webhooks/mcp`) with `x-functions-key` header authentication
 - [ ] Monitor logs for any errors
 - [ ] (Optional) Configure Azure Key Vault for secrets
 
 **Documentation:** [docs/mcp-server-setup.md](./docs/mcp-server-setup.md)
+
+**Important:** The MCP endpoint uses `/runtime/webhooks/mcp` and requires the `mcp_extension` system key for authentication (passed via `x-functions-key` header).
 
 ## 6. Teams Bot Configuration
 
@@ -140,7 +142,7 @@ Use this checklist to track your deployment progress.
   - [ ] Azure OpenAI API key
   - [ ] Azure OpenAI deployment name
   - [ ] MCP Server base URL
-  - [ ] MCP Server function key
+  - [ ] MCP Server `mcp_extension` system key (from step 5)
 - [ ] Run `dotnet restore`
 - [ ] Run `dotnet build`
 - [ ] (Optional) Test locally with `dotnet run`
@@ -230,8 +232,9 @@ Keep track of your configuration values:
 - Tenant ID: `_______________________________`
 
 **MCP Server:**
-- Function URL: `_______________________________`
-- Function Key: `_______________________________`
+- Function Base URL: `_______________________________`
+- MCP Endpoint: `_______________________________/runtime/webhooks/mcp`
+- MCP Extension Key (system key): `_______________________________`
 
 **Dataverse:**
 - Environment URL: `_______________________________`

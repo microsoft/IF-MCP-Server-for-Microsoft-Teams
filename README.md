@@ -19,12 +19,12 @@ This project demonstrates:
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│                      Microsoft Teams                              │
+│                      Microsoft Teams                             │
 └────────────────────────────┬─────────────────────────────────────┘
                              │
                              ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│                   Teams Bot (Azure App Service)                   │
+│                   Teams Bot (Azure App Service)                  │
 │  ┌────────────────────────────────────────────────────────────┐  │
 │  │  Bot Framework SDK                                         │  │
 │  │  - Receives user messages                                  │  │
@@ -32,7 +32,7 @@ This project demonstrates:
 │  │  - Calls MCP server with determined tool & params          │  │
 │  │  - Formats and returns results to Teams                    │  │
 │  └────────────────────────────────────────────────────────────┘  │
-│                                                                    │
+│                                                                  │
 │  ┌─────────────────┐          ┌────────────────────────────────┐ │
 │  │ Azure OpenAI    │          │    MCP Client                  │ │
 │  │ (GPT-4.1)       │          │    - HTTP/JSON-RPC protocol    │ │
@@ -42,18 +42,19 @@ This project demonstrates:
                                          │ HTTP/JSON-RPC
                                          ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│              MCP Server (Azure Functions)                         │
+│              MCP Server (Azure Functions)                        │
 │  ┌────────────────────────────────────────────────────────────┐  │
-│  │  MCP Protocol Implementation                               │  │
-│  │  - initialize, tools/list, tools/call                      │  │
+│  │  Microsoft MCP Extension                                   │  │
+│  │  - Endpoint: /runtime/webhooks/mcp                         │  │
+│  │  - Protocol: JSON-RPC 2.0 (JSON/SSE)                       │  │
 │  │                                                            │  │
-│  │  MCP Tools:                                                │  │
-│  │  • search_opinions - Search court opinions                │  │
-│  │  • get_opinion_details - Get specific opinion             │  │
-│  │  • search_dockets - Search dockets/cases                  │  │
-│  │  • get_court_info - Get court information                 │  │
+│  │  MCP Tools (via McpToolTrigger):                           │  │
+│  │  • search_opinions - Search court opinions                 │  │
+│  │  • get_opinion_details - Get specific opinion              │  │
+│  │  • search_dockets - Search dockets/cases                   │  │
+│  │  • get_court_info - Get court information                  │  │
 │  └────────────────────────────────────────────────────────────┘  │
-│                                                                    │
+│                                                                  │
 │  ┌──────────────────────┐      ┌───────────────────────────────┐ │
 │  │ Dataverse Cache      │      │ Court Listener Client         │ │
 │  │ - 30-day TTL         │      │ - REST API integration        │ │
@@ -71,14 +72,16 @@ This project demonstrates:
 ## Key Components
 
 ### 1. MCP Server (`/mcp-server`)
-- **Technology:** C# Azure Functions (.NET 8)
+- **Technology:** C# Azure Functions (.NET 8) with Microsoft MCP Extension
 - **Purpose:** Standalone MCP server exposing Court Listener API as MCP tools
 - **Features:**
-  - MCP protocol implementation (JSON-RPC 2.0)
-  - 4 MCP tools for legal research
+  - Official Microsoft MCP extension (`Microsoft.Azure.Functions.Worker.Extensions.Mcp`)
+  - MCP protocol support (JSON-RPC 2.0 over JSON and SSE)
+  - 4 MCP tools for legal research (attribute-based registration)
   - Dataverse integration for caching (30-day TTL)
   - Service Principal authentication
   - Health monitoring endpoint
+  - Single endpoint `/runtime/webhooks/mcp` for all tools
 
 ### 2. Teams Bot (`/teams-bot`)
 - **Technology:** C# ASP.NET Core with Bot Framework SDK (.NET 8)
@@ -112,38 +115,51 @@ This project demonstrates:
 mcp-teams/
 ├── mcp-server/                 # MCP Server (Azure Functions)
 │   ├── Models/
-│   │   ├── McpModels.cs       # MCP protocol models
-│   │   └── CourtListenerModels.cs
+│   │   ├── McpModels.cs            # MCP protocol models
+│   │   └── CourtListenerModels.cs  # Court Listener API models
 │   ├── Services/
+│   │   ├── ICourtListenerClient.cs # Court Listener client interface
 │   │   ├── CourtListenerClient.cs  # Court Listener API client
-│   │   ├── DataverseCache.cs       # Dataverse caching service
-│   │   └── McpServerService.cs     # MCP protocol implementation
-│   ├── McpFunctions.cs             # Azure Functions HTTP endpoints
-│   ├── Program.cs
-│   ├── host.json
-│   └── local.settings.json
+│   │   ├── IDataverseCache.cs      # Dataverse cache interface
+│   │   └── DataverseCache.cs       # Dataverse caching service
+│   ├── McpTools.cs                 # MCP tools (using MCP extension)
+│   ├── HealthFunction.cs           # Health check endpoint
+│   ├── Program.cs                  # Application entry point
+│   ├── host.json                   # Azure Functions host config
+│   ├── local.settings.json         # Local development settings
+│   └── CourtListenerMcpServer.csproj
 │
 ├── teams-bot/                  # Teams Bot
 │   ├── Bots/
 │   │   └── CourtListenerBot.cs     # Main bot logic
 │   ├── Services/
+│   │   ├── IMcpClient.cs           # MCP client interface
 │   │   ├── McpClient.cs            # MCP client implementation
+│   │   ├── IAzureOpenAIService.cs  # OpenAI service interface
 │   │   └── AzureOpenAIService.cs   # OpenAI integration
 │   ├── Controllers/
-│   │   └── BotController.cs
+│   │   └── BotController.cs        # Bot Framework endpoint
+│   ├── Models/
+│   │   └── McpModels.cs            # MCP protocol models
 │   ├── TeamsAppManifest/
 │   │   └── manifest.json           # Teams app package
-│   ├── Program.cs
-│   └── appsettings.json
+│   ├── AdapterWithErrorHandler.cs  # Bot Framework adapter
+│   ├── Program.cs                  # Application entry point
+│   ├── appsettings.json            # Application settings
+│   └── CourtListenerTeamsBot.csproj
 │
 ├── docs/                       # Documentation
-│   ├── azure-setup.md          # Azure resources setup
-│   ├── dataverse-setup.md      # Dataverse configuration
-│   ├── mcp-server-setup.md     # MCP server deployment
-│   ├── teams-bot-setup.md      # Teams bot deployment
-│   └── teams-app-registration.md # Teams app installation
+│   ├── resource-identification.md  # Resource naming guide
+│   ├── azure-setup.md              # Azure resources setup
+│   ├── dataverse-setup.md          # Dataverse configuration
+│   ├── mcp-server-setup.md         # MCP server deployment
+│   ├── teams-bot-setup.md          # Teams bot deployment
+│   └── teams-app-registration.md   # Teams app installation
 │
 ├── README.md                   # This file
+├── QUICKSTART.md               # Quick reference guide
+├── DEPLOYMENT-CHECKLIST.md     # Deployment checklist
+├── SECURITY.md                 # Security information
 └── LICENSE                     # MIT License
 ```
 
@@ -289,8 +305,9 @@ func start
 
 Test with:
 ```bash
-curl -X POST http://localhost:7071/api/mcp \
+curl -X POST http://localhost:7071/runtime/webhooks/mcp \
   -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
   -d '{"jsonrpc":"2.0","id":"1","method":"tools/list"}'
 ```
 
@@ -347,9 +364,11 @@ dotnet publish -c Release
   "AzureOpenAI__ApiKey": "<openai-key>",
   "AzureOpenAI__DeploymentName": "gpt-4.1",
   "McpServer__BaseUrl": "https://func-courtlistener-mcp.azurewebsites.net",
-  "McpServer__FunctionKey": "<function-key>"
+  "McpServer__FunctionKey": "<mcp-extension-system-key>"
 }
 ```
+
+> **Note:** The `McpServer__FunctionKey` must be the `mcp_extension` system key, NOT the default function key. The Teams bot calls `/runtime/webhooks/mcp` with the `x-functions-key` header.
 
 ## Monitoring
 
@@ -373,8 +392,9 @@ az webapp log tail --name app-courtlistener-bot --resource-group rg-courtlistene
 - **Service Principal Authentication** for Dataverse
 - **Azure Key Vault** for secrets (recommended for production)
 - **HTTPS only** enforcement
-- **Function keys** for MCP server access
+- **MCP Extension System Key** (`mcp_extension`) for MCP server access
 - **Bot Framework authentication** for Teams
+- **Header-based authentication** (`x-functions-key`) for MCP endpoint
 
 ## Why MCP?
 
@@ -398,9 +418,10 @@ This demo showcases MCP as a **standalone service architecture**:
 
 ### Add More Tools
 
-1. Add new methods to `McpServerService.cs`
-2. Register tools in `HandleToolsList()`
-3. Implement tool logic in `HandleToolsCallAsync()`
+1. Add new methods to `McpTools.cs` with `[McpToolTrigger]` and `[McpToolProperty]` attributes
+2. Implement the Court Listener API integration in `CourtListenerClient.cs` if needed
+3. Follow the pattern of existing tools (e.g., `SearchOpinions`, `GetOpinionDetails`)
+4. Redeploy the function app to register the new tools
 
 ### Add More Clients
 

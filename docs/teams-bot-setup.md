@@ -39,7 +39,7 @@ Update `appsettings.json` with your values:
   },
   "McpServer": {
     "BaseUrl": "Use value from $FUNCTION_URL",
-    "FunctionKey": "Use value from $FUNCTION_KEY"
+    "FunctionKey": "Use the mcp_extension system key from MCP server setup"
   }
 }
 ```
@@ -47,6 +47,8 @@ Update `appsettings.json` with your values:
 > **Important:** For local development, create `appsettings.Development.json` with the same structure (this file is gitignored).
 
 > **Note:** The `MicrosoftAppTenantId` and `MicrosoftAppType` settings are required for SingleTenant bot authentication with Bot Framework Service.
+
+> **Note:** The `McpServer.FunctionKey` must be the `mcp_extension` system key from your MCP server deployment, NOT the default function key. See the [MCP Server Setup](./mcp-server-setup.md) guide for instructions on retrieving this key. The Teams bot calls the `/runtime/webhooks/mcp` endpoint using header-based authentication (`x-functions-key` header).
 
 ## 2. Test Locally
 
@@ -109,6 +111,9 @@ az webapp config appsettings set \
     "AzureOpenAI__DeploymentName=$OPENAI_DEPLOYMENT_NAME" \
     "McpServer__BaseUrl=$FUNCTION_URL" \
     "McpServer__FunctionKey=$FUNCTION_KEY"
+
+# Note: $FUNCTION_KEY should contain the mcp_extension system key from your MCP server
+# If you haven't retrieved it yet, see the MCP Server Setup guide
 ```
 
 ### Publish the Web App
@@ -158,7 +163,7 @@ curl https://$APP_SERVICE_URL/api/messages
 
 1. Open Bot Framework Emulator
 2. Click **Open Bot**
-3. Enter: `https://$APP_URL/api/messages`
+3. Enter: `https://$APP_SERVICE_URL/api/messages`
 4. Enter your Microsoft App ID and Password
 5. Click **Connect**
 6. Send a test message
@@ -178,7 +183,7 @@ Or via Azure Portal:
 1. Go to [Azure Portal](https://portal.azure.com)
 2. Navigate to your Bot resource (`bot-courtlistener-demo`)
 3. Go to **Settings** > **Configuration**
-4. Update **Messaging endpoint**: `https://app-courtlistener-bot.azurewebsites.net/api/messages`
+4. Update **Messaging endpoint**: `https://$APP_SERVICE_URL/api/messages`
 5. Click **Apply**
 
 ## 6. Monitor and Troubleshoot
@@ -227,9 +232,10 @@ az webapp log config \
 
 **Issue:** MCP calls fail
 - **Solution:**
-  - Verify McpServer__BaseUrl is correct
-  - Check McpServer__FunctionKey is valid
-  - Test MCP server independently
+  - Verify McpServer__BaseUrl is correct (e.g., `https://func-courtlistener-demo.azurewebsites.net`)
+  - Ensure McpServer__FunctionKey uses the `mcp_extension` system key, NOT the default function key
+  - Test MCP server independently: `curl -X POST "https://<FUNCTION_APP>.azurewebsites.net/runtime/webhooks/mcp" -H "x-functions-key: <KEY>" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":"1","method":"tools/list"}'`
+  - Check logs for authentication errors (403) or protocol errors (406)
 
 **Issue:** Azure OpenAI errors
 - **Solution:**
@@ -275,9 +281,9 @@ az role assignment create \
   --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.KeyVault/vaults/$KEY_VAULT_NAME"
 
 # Store secrets
-az keyvault secret set --vault-name $KEY_VAULT_NAME --name "BotAppPassword" --value "<YOUR_BOT_SECRET>"
-az keyvault secret set --vault-name $KEY_VAULT_NAME --name "AzureOpenAIKey" --value "<YOUR_OPENAI_KEY>"
-az keyvault secret set --vault-name $KEY_VAULT_NAME --name "McpFunctionKey" --value "<YOUR_MCP_KEY>"
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "BotAppPassword" --value $APP_SECRET
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "AzureOpenAIKey" --value $OPENAI_API_KEY
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "McpFunctionKey" --value $FUNCTION_KEY
 
 # Update app settings to reference Key Vault
 az webapp config appsettings set \
@@ -302,12 +308,15 @@ az webapp update \
 
 Your Teams Bot should now be deployed with:
 
-- **URL:** `https://app-courtlistener-bot.azurewebsites.net`
-- **Endpoint:** `https://app-courtlistener-bot.azurewebsites.net/api/messages`
+- **URL:** `https://$APP_SERVICE_URL`
+- **Endpoint:** `https://$APP_SERVICE_URL/api/messages`
 - **Bot ID:** `<YOUR_BOT_APP_ID>`
 - **Connected to:**
-  - Azure OpenAI (GPT-4.1)
-  - MCP Server (Court Listener API + Dataverse cache)
+  - Azure OpenAI (GPT-4.1) - Tool selection and response formatting
+  - MCP Server - Court Listener API access with Dataverse caching
+    - Endpoint: `https://<FUNCTION_APP>.azurewebsites.net/runtime/webhooks/mcp`
+    - Authentication: `x-functions-key` header with `mcp_extension` system key
+    - Protocol: JSON-RPC 2.0 (supports both JSON and SSE responses)
 
 ## Next Steps
 

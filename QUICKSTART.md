@@ -38,15 +38,25 @@ Follow [docs/mcp-server-setup.md](./docs/mcp-server-setup.md) to:
 - Configure local settings
 - Test locally
 - Deploy to Azure Functions
+- Get the `mcp_extension` system key
 
 **Commands:**
 ```bash
 cd mcp-server
 # Update local.settings.json with your values
 dotnet restore
-func start  # Test locally
+func start  # Test locally at /runtime/webhooks/mcp
 func azure functionapp publish func-courtlistener-mcp  # Deploy
+
+# Get the mcp_extension system key (NOT the default function key)
+func keys list --system mcp_extension
 ```
+
+**Note:** The MCP server uses:
+- Microsoft MCP Extension (NuGet package)
+- Extension bundle version `[4.0.0, 5.0.0)` in `host.json`
+- Single endpoint `/runtime/webhooks/mcp` for all tools
+- `mcp_extension` system key for authentication
 
 ## Step 5: Deploy Teams Bot (15 minutes)
 
@@ -59,11 +69,16 @@ Follow [docs/teams-bot-setup.md](./docs/teams-bot-setup.md) to:
 ```bash
 cd teams-bot
 # Update appsettings.json with your values
+# IMPORTANT: Use the mcp_extension system key from Step 4
 dotnet restore
 dotnet run  # Test locally (optional)
 dotnet publish -c Release -o ./publish
 # Deploy to Azure
 ```
+
+**Note:** The Teams bot configuration requires:
+- `McpServer__BaseUrl`: Your Function App URL (e.g., `https://func-courtlistener-mcp.azurewebsites.net`)
+- `McpServer__FunctionKey`: The `mcp_extension` system key from Step 4
 
 ## Step 6: Install in Teams (10 minutes)
 
@@ -99,9 +114,11 @@ Once deployed, test in Teams:
 - Test with Bot Framework Emulator
 
 **MCP calls fail:**
-- Test MCP server health endpoint
-- Verify function key is correct
+- Test MCP server health endpoint: `curl https://func-courtlistener-mcp.azurewebsites.net/api/health`
+- Verify you're using the `mcp_extension` system key, NOT the default function key
+- Test MCP endpoint: `curl -X POST https://func-courtlistener-mcp.azurewebsites.net/runtime/webhooks/mcp -H "x-functions-key: YOUR_KEY" -H "Content-Type: application/json" -H "Accept: application/json, text/event-stream" -d '{"jsonrpc":"2.0","id":"1","method":"tools/list"}'`
 - Check Application Insights for errors
+- Verify Accept headers include both `application/json` and `text/event-stream`
 
 **Dataverse errors:**
 - Verify Service Principal has Application User access
@@ -111,9 +128,10 @@ Once deployed, test in Teams:
 ## Next Steps
 
 - Customize bot prompts in `AzureOpenAIService.cs`
-- Add more MCP tools in `McpServerService.cs`
+- Add more MCP tools in `McpTools.cs` using `[McpToolTrigger]` attributes
 - Monitor usage in Application Insights
 - Share with your team
+- Configure VS Code MCP integration for development
 
 ## Documentation
 

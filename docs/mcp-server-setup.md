@@ -24,7 +24,8 @@ Update `local.settings.json` with your values:
 {
   "IsEncrypted": false,
   "Values": {
-    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "AzureWebJobsStorage": "",
+    "AzureWebJobsSecretStorageType": "files",
     "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
     "CourtListener__BaseUrl": "https://www.courtlistener.com/api/rest/v3/",
     "CourtListener__ApiKey": "",
@@ -60,8 +61,13 @@ You should see:
 ```
 Functions:
   health: [GET] http://localhost:7071/api/health
-  mcp: [POST] http://localhost:7071/api/mcp
+  SearchOpinions: mcpToolTrigger
+  GetOpinionDetails: mcpToolTrigger
+  SearchDockets: mcpToolTrigger
+  GetCourtInfo: mcpToolTrigger
 ```
+
+> **Note:** The MCP tools use the `mcpToolTrigger` and are all accessible via the `/runtime/webhooks/mcp` endpoint provided by the Microsoft MCP extension. They won't show individual HTTP endpoints like traditional HTTP-triggered functions.
 
 ### Test the health endpoint
 
@@ -81,8 +87,9 @@ Expected response:
 ### Test MCP endpoint
 
 ```bash
-curl -X POST http://localhost:7071/api/mcp \
+curl -X POST http://localhost:7071/runtime/webhooks/mcp \
   -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
   -d '{
     "jsonrpc": "2.0",
     "id": "1",
@@ -101,18 +108,21 @@ Expected response:
       "tools": {}
     },
     "serverInfo": {
-      "name": "court-listener-mcp-server",
+      "name": "CourtListenerMcpServer",
       "version": "1.0.0"
     }
   }
 }
 ```
 
+> **Note:** The MCP extension supports both JSON (`application/json`) and Server-Sent Events (`text/event-stream`) response formats. Include both in the Accept header for compatibility.
+
 ### Test a tool call
 
 ```bash
-curl -X POST http://localhost:7071/api/mcp \
+curl -X POST http://localhost:7071/runtime/webhooks/mcp \
   -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
   -d '{
     "jsonrpc": "2.0",
     "id": "2",
@@ -164,23 +174,29 @@ Remote build succeeded!
 ### Get the Function URL and Key
 
 ```bash
-# Get the default host key
-FUNCTION_KEY=$(az functionapp keys list \
-  --name $FUNCTION_APP_NAME \
-  --resource-group $RESOURCE_GROUP \
-  --query "functionKeys.default" \
-  --output tsv)
-
-echo "Function Key: $FUNCTION_KEY"
-
 # Set the Function URL
 FUNCTION_URL="https://$FUNCTION_APP_NAME.azurewebsites.net"
 echo "Function URL: $FUNCTION_URL"
+
+# Get the mcp_extension system key (required for MCP endpoint authentication)
+# Note: This key is automatically created by the MCP extension
+FUNCTION_KEY=$(az rest \
+  --method post \
+  --uri "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.Web/sites/$FUNCTION_APP_NAME/host/default/listKeys?api-version=2022-03-01" \
+  --query "systemKeys.mcp_extension" \
+  --output tsv)
+
+echo "MCP Extension Key: $FUNCTION_KEY"
 ```
 
+
+
 **Save these values:**
-- MCP Server URL: `https://func-courtlistener-mcp.azurewebsites.net`
-- Function Key: `<your-function-key>`
+- MCP Server Base URL: `https://$FUNCTION_APP_NAME.azurewebsites.net`
+- MCP Endpoint: `https://$FUNCTION_APP_NAME.azurewebsites.net/runtime/webhooks/mcp`
+- MCP Extension Key: `$FUNCTION_KEY`
+
+> **Important:** The MCP endpoint uses the `mcp_extension` system key, NOT the default function key. This key is automatically created when the MCP extension initializes.
 
 ## 4. Test the Deployed Function
 
@@ -193,8 +209,10 @@ curl "https://$FUNCTION_APP_NAME.azurewebsites.net/api/health"
 ### Test MCP endpoint with authentication
 
 ```bash
-curl -X POST "https://$FUNCTION_APP_NAME.azurewebsites.net/api/mcp?code=$FUNCTION_KEY" \
+curl -X POST "https://$FUNCTION_APP_NAME.azurewebsites.net/runtime/webhooks/mcp" \
   -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "x-functions-key: $FUNCTION_KEY" \
   -d '{
     "jsonrpc": "2.0",
     "id": "1",
@@ -203,6 +221,8 @@ curl -X POST "https://$FUNCTION_APP_NAME.azurewebsites.net/api/mcp?code=$FUNCTIO
 ```
 
 Expected response should list all 4 tools: `search_opinions`, `get_opinion_details`, `search_dockets`, `get_court_info`.
+
+> **Note:** Authentication uses the `x-functions-key` header (not a query parameter) with the `mcp_extension` system key.
 
 ## 5. Monitor and Troubleshoot
 
@@ -275,8 +295,8 @@ az role assignment create \
   --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.KeyVault/vaults/$KEY_VAULT_NAME"
 
 # Store secrets
-az keyvault secret set --vault-name $KEY_VAULT_NAME --name "DataverseClientSecret" --value "<YOUR_SECRET>"
-az keyvault secret set --vault-name $KEY_VAULT_NAME --name "CourtListenerApiKey" --value "<YOUR_KEY>"
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "DataverseClientSecret" --value $DATAVERSE_APP_SECRET
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "CourtListenerApiKey" --value "<YOUR_COURTLISTENER.COM_API_KEY>"
 
 # Update app settings to reference Key Vault
 az functionapp config appsettings set \
@@ -291,17 +311,44 @@ az functionapp config appsettings set \
 
 Your MCP Server should now be deployed with:
 
-- **URL:** `https://<FUNCTION_APP_NAME>.azurewebsites.net`
-- **Function Key:** `<saved>`
+- **Base URL:** `https://<FUNCTION_APP_NAME>.azurewebsites.net`
+- **MCP Extension Key:** `<mcp_extension system key>`
 - **Endpoints:**
-  - Health: `GET /api/health`
-  - MCP: `POST /api/mcp?code=<FUNCTION_KEY>`
+  - Health: `GET /api/health` (no authentication)
+  - MCP: `POST /runtime/webhooks/mcp` (requires `x-functions-key` header)
+- **Authentication:** Header-based using `x-functions-key: <mcp_extension_key>`
+- **Protocol Support:** JSON-RPC 2.0 over both `application/json` and `text/event-stream` (SSE)
 - **Tools:**
-  - `search_opinions`
-  - `get_opinion_details`
-  - `search_dockets`
-  - `get_court_info`
+  - `search_opinions` - Search court opinions by keywords, court, date range
+  - `get_opinion_details` - Get detailed information about a specific opinion
+  - `search_dockets` - Search dockets/cases by name, number, court
+  - `get_court_info` - Get information about courts and jurisdictions
 - **Caching:** Dataverse with 30-day TTL
+
+### VS Code MCP Configuration
+
+To use this MCP server in VS Code, add the following to your MCP configuration:
+
+```json
+{
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "mcpFunctionKey",
+      "description": "Azure Function Key for Court Listener MCP Server",
+      "password": true
+    }
+  ],
+  "mcpServers": {
+    "court-listener": {
+      "url": "https://<FUNCTION_APP_NAME>.azurewebsites.net/runtime/webhooks/mcp",
+      "headers": {
+        "x-functions-key": "${input:mcpFunctionKey}"
+      }
+    }
+  }
+}
+```
 
 ## Next Steps
 

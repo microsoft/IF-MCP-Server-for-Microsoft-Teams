@@ -63,7 +63,7 @@ public class CourtListenerBot : ActivityHandler
         {
             _logger.LogError(ex, "Error processing message");
             await turnContext.SendActivityAsync(
-                MessageFactory.Text($"I encountered an error while processing your request: {ex.Message}"),
+                MessageFactory.Text("I apologize, but I encountered an issue while searching for legal information. Please try rephrasing your question or contact support if the problem persists."),
                 cancellationToken);
         }
     }
