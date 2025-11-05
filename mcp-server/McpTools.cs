@@ -202,15 +202,26 @@ public class McpTools
             ToolInvocationContext context,
         [McpToolProperty("court_id", "The court ID (optional, if not provided returns all courts)")]
             string? court_id = null,
-        [McpToolProperty("jurisdiction", "Filter by jurisdiction")]
+        [McpToolProperty(
+                "jurisdiction",
+                "Filter by jurisdiction. Allowed values: F (Federal Appellate), FD (Federal District), FB (Federal Bankruptcy), FBP (Federal Bankruptcy Panel), FS (Federal Special), S (State Supreme), SA (State Appellate), ST (State Trial), SS (State Special), TRS (Tribal Supreme), TRA (Tribal Appellate), TRT (Tribal Trial), TRX (Tribal Special), TS (Territory Supreme), TA (Territory Appellate), TT (Territory Trial), TSP (Territory Special), SAG (State Attorney General), MA (Military Appellate), MT (Military Trial), C (Committee), I (International), T (Testing)"
+            )]
             string? jurisdiction = null,
+        [McpToolProperty("short_name", "Filter by short name (partial match allowed)")]
+            string? short_name = null,
+        [McpToolProperty("short_name_lookup", "Lookup type for short name. Allowed: exact, iexact, startswith, istartswith, endswith, iendswith, contains, icontains")]
+            string? short_name_lookup = null,
+        [McpToolProperty("full_name", "Filter by full name (partial match allowed)")]
+            string? full_name = null,
+        [McpToolProperty("full_name_lookup", "Lookup type for full name. Allowed: exact, iexact, startswith, istartswith, endswith, iendswith, contains, icontains")]
+            string? full_name_lookup = null,
         [McpToolProperty("in_use", "Filter by whether court is in use")]
             bool? in_use = null)
     {
         _logger.LogInformation("GetCourtInfo called with court_id: {CourtId}", court_id);
 
         // Build cache key
-        var cacheKey = $"get_court_info:{JsonSerializer.Serialize(new { court_id, jurisdiction, in_use })}";
+        var cacheKey = $"get_court_info:{JsonSerializer.Serialize(new { court_id, jurisdiction, short_name, short_name_lookup, full_name, full_name_lookup, in_use })}";
 
         // Try cache first
         var cachedResult = await _cache.GetAsync(cacheKey);
@@ -245,6 +256,16 @@ public class McpTools
         {
             // Search courts
             var arguments = new Dictionary<string, object>();
+            if (!string.IsNullOrEmpty(short_name))
+            {
+                var key = !string.IsNullOrEmpty(short_name_lookup) ? $"short_name__{short_name_lookup}" : "short_name";
+                arguments[key] = short_name;
+            }
+            if (!string.IsNullOrEmpty(full_name))
+            {
+                var key = !string.IsNullOrEmpty(full_name_lookup) ? $"full_name__{full_name_lookup}" : "full_name";
+                arguments[key] = full_name;
+            }
             if (!string.IsNullOrEmpty(jurisdiction)) arguments["jurisdiction"] = jurisdiction;
             if (in_use.HasValue) arguments["in_use"] = in_use.Value;
 

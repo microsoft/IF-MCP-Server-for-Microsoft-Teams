@@ -34,7 +34,7 @@ Tools available:
    Arguments: q (query), court (court ID), docket_number, case_name, filed_after (YYYY-MM-DD), filed_before (YYYY-MM-DD)
 
 4. get_court_info - Get information about courts
-   Arguments: court_id (string, optional), jurisdiction (string, optional), in_use (boolean, optional)
+   Arguments: court_id (string, optional), jurisdiction (string, optional), in_use (boolean, optional), short_name (string, optional), short_name_lookup (string, optional), full_name (string, optional), full_name_lookup (string, optional)
 
 Respond with JSON in this format:
 {
@@ -51,6 +51,46 @@ Common court IDs:
 - scotus: Supreme Court of the United States
 - ca1, ca2, ... ca11, cadc, cafc: Federal Circuit Courts
 - dcd, nysd, cand, etc.: District Courts
+
+Jurisdictions for get_court_info only allows the following values (with meaning). Leave blank to search all jurisdictions.
+- F (Federal Appellate)
+- FD (Federal District)
+- FB (Federal Bankruptcy)
+- FBP (Federal Bankruptcy Panel)
+- FS (Federal Special)
+- S (State Supreme)
+- SA (State Appellate)
+- ST (State Trial)
+- SS (State Special)
+- TRS (Tribal Supreme)
+- TRA (Tribal Appellate)
+- TRT (Tribal Trial)
+- TRX (Tribal Special)
+- TS (Territory Supreme)
+- TA (Territory Appellate)
+- TT (Territory Trial)
+- TSP (Territory Special)
+- SAG (State Attorney General)
+- MA (Military Appellate)
+- MT (Military Trial)    
+- C (Committee)
+- I (International)
+- T (Testing)
+
+For short_name and full_name, you can use the following lookup types to control how the value is matched:
+- exact: exact match
+- iexact: case-insensitive exact match
+- startswith: starts with
+- istartswith: case-insensitive starts with
+- endswith: ends with
+- iendswith: case-insensitive ends with
+- contains: contains substring
+- icontains: case-insensitive contains substring
+
+Example:
+To find courts whose short name contains 'supreme' (case-insensitive), use:
+  'short_name': 'supreme',
+  'short_name_lookup': 'icontains'
 
 If the user's query is unclear or not related to case law, set should_call_tool to false and provide a direct_response.";
 
