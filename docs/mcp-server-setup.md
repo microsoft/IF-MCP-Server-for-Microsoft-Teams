@@ -17,7 +17,7 @@ This guide walks you through deploying the Court Listener MCP Server to Azure Fu
 The MCP server queries CourtListener.com for case information. In order to communicate with their API, you will need a key.
 
 1. Go to [https://courtlistener.com/sign-in/](https://www.courtlistener.com/sign-in/) to create a free account.
-2. Once you've logged in (you may need to confirm your email address), click on **Profile** in the top-right of the page.
+2. Once you've logged in (you may need to confirm your email address), click on **Profile** in the top-right of the page, then **Account** on the drop-down.
 3. Click on the **Developer Tools** tab.
 4. Click on the **Your API Token** sub tab.
 5. Copy the API token. (This will be your `CourtListener__ApiKey` in the next section.)
