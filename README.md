@@ -219,9 +219,9 @@ Search for court opinions by keywords, court, date range.
 **Parameters:**
 - `q` (string): Search query
 - `court` (string): Court ID (e.g., "scotus", "ca9")
-- `filed_after` (string): Date filter (YYYY-MM-DD)
-- `filed_before` (string): Date filter (YYYY-MM-DD)
-- `order_by` (string): Sort field
+- `filedAfter` (string): Date filter (YYYY-MM-DD)
+- `filedBefore` (string): Date filter (YYYY-MM-DD)
+- `orderBy` (string): Sort field
 
 **Example:**
 ```json

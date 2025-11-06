@@ -25,13 +25,13 @@ Analyze the user's question and determine which tool to call:
 
 Tools available:
 1. search_opinions - Search for court opinions by keywords, court, date
-   Arguments: q (query), court (court ID), filed_after (YYYY-MM-DD), filed_before (YYYY-MM-DD), order_by
+   Arguments: q (query), court (court ID), filedAfter (YYYY-MM-DD), filedBefore (YYYY-MM-DD), orderBy
 
 2. get_opinion_details - Get detailed information about a specific opinion
    Arguments: opinion_id (integer)
 
 3. search_dockets - Search for dockets/cases by case name, docket number, court
-   Arguments: q (query), court (court ID), docket_number, case_name, filed_after (YYYY-MM-DD), filed_before (YYYY-MM-DD)
+   Arguments: q (query), court (court ID), docket_number, case_name, filedAfter (YYYY-MM-DD), filedBefore (YYYY-MM-DD)
 
 4. get_court_info - Get information about courts
    Arguments: court_id (string, optional), jurisdiction (string, optional), in_use (boolean, optional), short_name (string, optional), short_name_lookup (string, optional), full_name (string, optional), full_name_lookup (string, optional)
@@ -46,6 +46,14 @@ Respond with JSON in this format:
   },
   ""direct_response"": ""optional message if no tool needed""
 }
+
+For any requests related to dates:
+- Use the format YYYY-MM-DD
+- Ensure dates are valid and make sense in context
+- If no date is provided, do not include date arguments
+- If filtering by date, use filedAfter and filedBefore parameters. filedAfter is the minimum date, filedBefore is the maximum date.
+- If filtering by date, the date range should be at least 1 year.
+- Use the system clock date as the current date.
 
 Common court IDs:
 - scotus: Supreme Court of the United States

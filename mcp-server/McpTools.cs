@@ -30,17 +30,19 @@ public class McpTools
             string? q = null,
         [McpToolProperty("court", "Court ID filter (e.g., 'scotus', 'ca9')")]
             string? court = null,
-        [McpToolProperty("filed_after", "Filter by filed date (YYYY-MM-DD)")]
-            string? filed_after = null,
-        [McpToolProperty("filed_before", "Filter by filed before date (YYYY-MM-DD)")]
-            string? filed_before = null,
-        [McpToolProperty("order_by", "Field to order by (e.g., 'date_filed')")]
-            string? order_by = null)
+        [McpToolProperty("filedAfter", "Filter by filed date (YYYY-MM-DD)")]
+            string? filedAfter = null,
+        [McpToolProperty("filedBefore", "Filter by filed before date (YYYY-MM-DD)")]
+            string? filedBefore = null,
+        [McpToolProperty("orderBy", "Field to order by (e.g., 'dateFiled')")]
+            string? orderBy = null)
     {
-        _logger.LogInformation("SearchOpinions called with query: {Query}, court: {Court}", q, court);
+        _logger.LogInformation("SearchOpinions called with query: {Query}, court: {Court}, filedAfter: {FiledAfter}, filedBefore: {FiledBefore}, orderBy: {OrderBy}",
+            q, court, filedAfter, filedBefore, orderBy);
 
         // Build cache key
-        var cacheKey = $"search_opinions:{JsonSerializer.Serialize(new { q, court, filed_after, filed_before, order_by })}";
+        var cacheKey = $"search_opinions:{JsonSerializer.Serialize(new { q, court, filedAfter, filedBefore, orderBy })}";
+        _logger.LogInformation("Cache key for SearchOpinions: {CacheKey}", cacheKey);
 
         // Try cache first
         var cachedResult = await _cache.GetAsync(cacheKey);
@@ -54,9 +56,9 @@ public class McpTools
         var arguments = new Dictionary<string, object>();
         if (!string.IsNullOrEmpty(q)) arguments["q"] = q;
         if (!string.IsNullOrEmpty(court)) arguments["court"] = court;
-        if (!string.IsNullOrEmpty(filed_after)) arguments["filed_after"] = filed_after;
-        if (!string.IsNullOrEmpty(filed_before)) arguments["filed_before"] = filed_before;
-        if (!string.IsNullOrEmpty(order_by)) arguments["order_by"] = order_by;
+        if (!string.IsNullOrEmpty(filedAfter)) arguments["filedAfter"] = filedAfter;
+        if (!string.IsNullOrEmpty(filedBefore)) arguments["filedBefore"] = filedBefore;
+        if (!string.IsNullOrEmpty(orderBy)) arguments["orderBy"] = orderBy;
 
         // Call Court Listener API
         var result = await _courtListenerClient.SearchOpinionsAsync(arguments);
@@ -137,19 +139,20 @@ public class McpTools
             string? q = null,
         [McpToolProperty("court", "Court ID filter")]
             string? court = null,
-        [McpToolProperty("docket_number", "Docket number")]
-            string? docket_number = null,
-        [McpToolProperty("case_name", "Case name")]
-            string? case_name = null,
-        [McpToolProperty("filed_after", "Filter by filed date (YYYY-MM-DD)")]
-            string? filed_after = null,
-        [McpToolProperty("filed_before", "Filter by filed before date (YYYY-MM-DD)")]
-            string? filed_before = null)
+        [McpToolProperty("docketNumber", "Docket number")]
+            string? docketNumber = null,
+        [McpToolProperty("caseName", "Case name")]
+            string? caseName = null,
+        [McpToolProperty("filedAfter", "Filter by filed date (YYYY-MM-DD)")]
+            string? filedAfter = null,
+        [McpToolProperty("filedBefore", "Filter by filed before date (YYYY-MM-DD)")]
+            string? filedBefore = null)
     {
-        _logger.LogInformation("SearchDockets called with query: {Query}, court: {Court}", q, court);
+        _logger.LogInformation("SearchDockets called with query: {Query}, court: {Court}, docketNumber: {DocketNumber}, caseName: {CaseName}, filedAfter: {FiledAfter}, filedBefore: {FiledBefore}",
+            q, court, docketNumber, caseName, filedAfter, filedBefore);
 
         // Build cache key
-        var cacheKey = $"search_dockets:{JsonSerializer.Serialize(new { q, court, docket_number, case_name, filed_after, filed_before })}";
+        var cacheKey = $"search_dockets:{JsonSerializer.Serialize(new { q, court, docketNumber, caseName, filedAfter, filedBefore })}";
 
         // Try cache first
         var cachedResult = await _cache.GetAsync(cacheKey);
@@ -163,10 +166,10 @@ public class McpTools
         var arguments = new Dictionary<string, object>();
         if (!string.IsNullOrEmpty(q)) arguments["q"] = q;
         if (!string.IsNullOrEmpty(court)) arguments["court"] = court;
-        if (!string.IsNullOrEmpty(docket_number)) arguments["docket_number"] = docket_number;
-        if (!string.IsNullOrEmpty(case_name)) arguments["case_name"] = case_name;
-        if (!string.IsNullOrEmpty(filed_after)) arguments["filed_after"] = filed_after;
-        if (!string.IsNullOrEmpty(filed_before)) arguments["filed_before"] = filed_before;
+        if (!string.IsNullOrEmpty(docketNumber)) arguments["docketNumber"] = docketNumber;
+        if (!string.IsNullOrEmpty(caseName)) arguments["caseName"] = caseName;
+        if (!string.IsNullOrEmpty(filedAfter)) arguments["filedAfter"] = filedAfter;
+        if (!string.IsNullOrEmpty(filedBefore)) arguments["filedBefore"] = filedBefore;
 
         // Call Court Listener API
         var result = await _courtListenerClient.SearchDocketsAsync(arguments);
@@ -200,28 +203,29 @@ public class McpTools
     public async Task<string> GetCourtInfo(
         [McpToolTrigger("get_court_info", "Get information about courts, including court names, jurisdictions, and metadata")]
             ToolInvocationContext context,
-        [McpToolProperty("court_id", "The court ID (optional, if not provided returns all courts)")]
-            string? court_id = null,
+        [McpToolProperty("courtId", "The court ID (optional, if not provided returns all courts)")]
+            string? courtId = null,
         [McpToolProperty(
                 "jurisdiction",
                 "Filter by jurisdiction. Allowed values: F (Federal Appellate), FD (Federal District), FB (Federal Bankruptcy), FBP (Federal Bankruptcy Panel), FS (Federal Special), S (State Supreme), SA (State Appellate), ST (State Trial), SS (State Special), TRS (Tribal Supreme), TRA (Tribal Appellate), TRT (Tribal Trial), TRX (Tribal Special), TS (Territory Supreme), TA (Territory Appellate), TT (Territory Trial), TSP (Territory Special), SAG (State Attorney General), MA (Military Appellate), MT (Military Trial), C (Committee), I (International), T (Testing)"
             )]
             string? jurisdiction = null,
-        [McpToolProperty("short_name", "Filter by short name (partial match allowed)")]
-            string? short_name = null,
-        [McpToolProperty("short_name_lookup", "Lookup type for short name. Allowed: exact, iexact, startswith, istartswith, endswith, iendswith, contains, icontains")]
-            string? short_name_lookup = null,
-        [McpToolProperty("full_name", "Filter by full name (partial match allowed)")]
-            string? full_name = null,
-        [McpToolProperty("full_name_lookup", "Lookup type for full name. Allowed: exact, iexact, startswith, istartswith, endswith, iendswith, contains, icontains")]
-            string? full_name_lookup = null,
-        [McpToolProperty("in_use", "Filter by whether court is in use")]
-            bool? in_use = null)
+        [McpToolProperty("shortName", "Filter by short name (partial match allowed)")]
+            string? shortName = null,
+        [McpToolProperty("shortNameLookup", "Lookup type for short name. Allowed: exact, iexact, startswith, istartswith, endswith, iendswith, contains, icontains")]
+            string? shortNameLookup = null,
+        [McpToolProperty("fullName", "Filter by full name (partial match allowed)")]
+            string? fullName = null,
+        [McpToolProperty("fullNameLookup", "Lookup type for full name. Allowed: exact, iexact, startswith, istartswith, endswith, iendswith, contains, icontains")]
+            string? fullNameLookup = null,
+        [McpToolProperty("inUse", "Filter by whether court is in use")]
+            bool? inUse = null)
     {
-        _logger.LogInformation("GetCourtInfo called with court_id: {CourtId}", court_id);
+        _logger.LogInformation("GetCourtInfo called with courtId: {CourtId}, jurisdiction: {Jurisdiction}, shortName: {ShortName}, fullName: {FullName}, inUse: {InUse}",
+            courtId, jurisdiction, shortName, fullName, inUse);
 
         // Build cache key
-        var cacheKey = $"get_court_info:{JsonSerializer.Serialize(new { court_id, jurisdiction, short_name, short_name_lookup, full_name, full_name_lookup, in_use })}";
+        var cacheKey = $"get_court_info:{JsonSerializer.Serialize(new { courtId, jurisdiction, shortName, shortNameLookup, fullName, fullNameLookup, inUse })}";
 
         // Try cache first
         var cachedResult = await _cache.GetAsync(cacheKey);
@@ -233,10 +237,10 @@ public class McpTools
 
         string responseJson;
 
-        if (!string.IsNullOrEmpty(court_id))
+        if (!string.IsNullOrEmpty(courtId))
         {
             // Get specific court
-            var court = await _courtListenerClient.GetCourtAsync(court_id);
+            var court = await _courtListenerClient.GetCourtAsync(courtId);
 
             var response = new
             {
@@ -256,18 +260,18 @@ public class McpTools
         {
             // Search courts
             var arguments = new Dictionary<string, object>();
-            if (!string.IsNullOrEmpty(short_name))
+            if (!string.IsNullOrEmpty(shortName))
             {
-                var key = !string.IsNullOrEmpty(short_name_lookup) ? $"short_name__{short_name_lookup}" : "short_name";
-                arguments[key] = short_name;
+                var key = !string.IsNullOrEmpty(shortNameLookup) ? $"shortName__{shortNameLookup}" : "shortName";
+                arguments[key] = shortName;
             }
-            if (!string.IsNullOrEmpty(full_name))
+            if (!string.IsNullOrEmpty(fullName))
             {
-                var key = !string.IsNullOrEmpty(full_name_lookup) ? $"full_name__{full_name_lookup}" : "full_name";
-                arguments[key] = full_name;
+                var key = !string.IsNullOrEmpty(fullNameLookup) ? $"fullName__{fullNameLookup}" : "fullName";
+                arguments[key] = fullName;
             }
             if (!string.IsNullOrEmpty(jurisdiction)) arguments["jurisdiction"] = jurisdiction;
-            if (in_use.HasValue) arguments["in_use"] = in_use.Value;
+            if (inUse.HasValue) arguments["inUse"] = inUse.Value;
 
             var result = await _courtListenerClient.SearchCourtsAsync(arguments);
 
