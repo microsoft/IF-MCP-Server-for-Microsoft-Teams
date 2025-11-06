@@ -22,6 +22,28 @@ public class McpTools
         _cache = cache;
     }
 
+    /// <summary>
+    /// Workaround for MCP extension parameter binding bug - manually extracts arguments from context.
+    /// Converts DateTime strings to YYYY-MM-DD format for date parameters.
+    /// See GH Issue: https://github.com/Azure/azure-functions-mcp-extensions/issues/124
+    /// </summary>
+    private static string? GetArgumentValue(ToolInvocationContext context, string key, bool isDate = false)
+    {
+        if (context.Arguments == null || !context.Arguments.TryGetValue(key, out var value))
+            return null;
+
+        var stringValue = value?.ToString();
+
+        if (isDate && !string.IsNullOrEmpty(stringValue))
+        {
+            // Try to parse as DateTime and convert to YYYY-MM-DD format
+            if (DateTime.TryParse(stringValue, out var dateValue))
+                return dateValue.ToString("yyyy-MM-dd");
+        }
+
+        return stringValue;
+    }
+
     [Function(nameof(SearchOpinions))]
     public async Task<string> SearchOpinions(
         [McpToolTrigger("search_opinions", "Search for court opinions by keywords, court, date range, and other criteria")]
@@ -37,6 +59,10 @@ public class McpTools
         [McpToolProperty("orderBy", "Field to order by (e.g., 'dateFiled')")]
             string? orderBy = null)
     {
+        // Workaround for MCP extension parameter binding bug
+        filedAfter = GetArgumentValue(context, "filedAfter", isDate: true) ?? filedAfter;
+        filedBefore = GetArgumentValue(context, "filedBefore", isDate: true) ?? filedBefore;
+
         _logger.LogInformation("SearchOpinions called with query: {Query}, court: {Court}, filedAfter: {FiledAfter}, filedBefore: {FiledBefore}, orderBy: {OrderBy}",
             q, court, filedAfter, filedBefore, orderBy);
 
@@ -148,6 +174,10 @@ public class McpTools
         [McpToolProperty("filedBefore", "Filter by filed before date (YYYY-MM-DD)")]
             string? filedBefore = null)
     {
+        // Workaround for MCP extension parameter binding bug
+        filedAfter = GetArgumentValue(context, "filedAfter", isDate: true) ?? filedAfter;
+        filedBefore = GetArgumentValue(context, "filedBefore", isDate: true) ?? filedBefore;
+
         _logger.LogInformation("SearchDockets called with query: {Query}, court: {Court}, docketNumber: {DocketNumber}, caseName: {CaseName}, filedAfter: {FiledAfter}, filedBefore: {FiledBefore}",
             q, court, docketNumber, caseName, filedAfter, filedBefore);
 
@@ -221,6 +251,13 @@ public class McpTools
         [McpToolProperty("inUse", "Filter by whether court is in use")]
             bool? inUse = null)
     {
+        // Handle boolean parameter
+        if (context.Arguments != null && context.Arguments.TryGetValue("inUse", out var inUseVal))
+        {
+            if (bool.TryParse(inUseVal?.ToString(), out var inUseBool))
+                inUse = inUseBool;
+        }
+
         _logger.LogInformation("GetCourtInfo called with courtId: {CourtId}, jurisdiction: {Jurisdiction}, shortName: {ShortName}, fullName: {FullName}, inUse: {InUse}",
             courtId, jurisdiction, shortName, fullName, inUse);
 

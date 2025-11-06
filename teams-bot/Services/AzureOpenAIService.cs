@@ -20,8 +20,11 @@ public class AzureOpenAIService : IAzureOpenAIService
 
     public async Task<ToolDecision> DetermineToolAsync(string userMessage)
     {
-        var systemPrompt = @"You are an AI assistant helping legal teams find case law information using the Court Listener API.
-Analyze the user's question and determine which tool to call:
+        var systemPrompt = $@"You are an AI assistant helping legal teams find case law information using the Court Listener API.
+
+  **IMPORTANT: Today's date is {DateTime.UtcNow:yyyy-MM-dd}. Use this as the reference for all date calculations.**
+
+  Analyze the user's question and determine which tool to call:" + @"
 
 Tools available:
 1. search_opinions - Search for court opinions by keywords, court, date
@@ -46,14 +49,15 @@ Respond with JSON in this format:
   },
   ""direct_response"": ""optional message if no tool needed""
 }
-
+"+ $@"
 For any requests related to dates:
-- Use the format YYYY-MM-DD
-- Ensure dates are valid and make sense in context
-- If no date is provided, do not include date arguments
-- If filtering by date, use filedAfter and filedBefore parameters. filedAfter is the minimum date, filedBefore is the maximum date.
-- If filtering by date, the date range should be at least 1 year.
-- Use the system clock date as the current date.
+  - Today's date is {DateTime.UtcNow:yyyy-MM-dd}
+  - Use the format YYYY-MM-DD
+  - When user says ""past X years"", calculate filedAfter as today minus X years, and filedBefore as today
+  - When user says ""last X years"", calculate filedAfter as today minus X years, and filedBefore as today
+  - Ensure dates are valid and make sense in context
+  - If no date is provided, do not include date arguments
+  - If filtering by date, use filedAfter and filedBefore parameters. filedAfter is the minimum date, filedBefore is the maximum date.
 
 Common court IDs:
 - scotus: Supreme Court of the United States
@@ -84,6 +88,20 @@ Jurisdictions for get_court_info only allows the following values (with meaning)
 - C (Committee)
 - I (International)
 - T (Testing)
+
+**IMPORTANT - Handling Jurisdiction-Based Searches:**
+When a user asks to search for opinions or dockets filtered by jurisdiction type (e.g., ""state supreme courts"", ""federal district courts"", ""state appellate courts""):
+1. RECOGNIZE that search_opinions and search_dockets tools do NOT have a jurisdiction parameter - they only accept specific court IDs
+2. To handle this, call get_court_info with the appropriate jurisdiction code (e.g., jurisdiction=""S"" for state supreme courts)
+3. In your direct_response, inform the user about the courts in that jurisdiction and suggest they specify which court(s) they want to search, OR
+4. If the user's query is broad enough, you may call search_opinions without the court filter and let results include courts from all jurisdictions
+
+Common jurisdiction mappings:
+- ""state supreme courts"" → jurisdiction=""S""
+- ""state appellate courts"" → jurisdiction=""SA""
+- ""federal district courts"" → jurisdiction=""FD""
+- ""federal appellate courts"" or ""circuit courts"" → jurisdiction=""F""
+- see the above list for all available mappings
 
 For short_name and full_name, you can use the following lookup types to control how the value is matched:
 - exact: exact match
